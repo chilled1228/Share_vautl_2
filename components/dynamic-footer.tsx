@@ -1,7 +1,37 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from "next/link"
 import { Twitter, Instagram, Facebook, Mail } from "lucide-react"
 
-export default function Footer() {
+interface Category {
+  name: string
+  count: number
+  slug: string
+}
+
+export default function DynamicFooter() {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories')
+        if (response.ok) {
+          const data = await response.json()
+          setCategories(data.categories.slice(0, 5)) // Show top 5 categories
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
+
   return (
     <footer className="bg-foreground text-background mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -59,36 +89,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-              </li>
-              <li>
                 <Link
                   href="/about"
                   className="text-lg font-bold hover:text-primary transition-colors uppercase tracking-wide"
                 >
                   ABOUT
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-lg font-bold hover:text-destructive transition-colors uppercase tracking-wide"
-                >
-                  CONTACT
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Categories */}
-          <div>
-            <h3 className="text-2xl font-black mb-6 uppercase tracking-tight">TOPICS</h3>
-            <ul className="space-y-3">
-              <li>
-                <Link
-                  href="/#all-posts"
-                  className="text-lg font-bold hover:text-accent transition-colors uppercase tracking-wide"
-                >
-                  ALL POSTS
                 </Link>
               </li>
               <li>
@@ -100,16 +105,52 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/about"
-                  className="text-lg font-bold hover:text-primary transition-colors uppercase tracking-wide"
+                <a
+                  href="#all-posts"
+                  className="text-lg font-bold hover:text-destructive transition-colors uppercase tracking-wide"
                 >
-                  ABOUT
-                </Link>
-              </li>
-              <li>
+                  ALL POSTS
+                </a>
               </li>
             </ul>
+          </div>
+
+          {/* Dynamic Categories */}
+          <div>
+            <h3 className="text-2xl font-black mb-6 uppercase tracking-tight">TOP TOPICS</h3>
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-muted animate-pulse h-6 brutalist-border"></div>
+                ))}
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {categories.map((category) => (
+                  <li key={category.slug}>
+                    <Link
+                      href={`/category/${category.slug}`}
+                      className="text-lg font-bold hover:text-accent transition-colors uppercase tracking-wide flex justify-between items-center group"
+                    >
+                      <span className="group-hover:text-accent">{category.name}</span>
+                      <span className="text-xs font-bold text-muted-foreground bg-background px-2 py-1 brutalist-border">
+                        {category.count}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+                {categories.length > 0 && (
+                  <li className="pt-2">
+                    <Link
+                      href="/#all-posts"
+                      className="text-sm font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-wide"
+                    >
+                      VIEW ALL CATEGORIES →
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
         </div>
 

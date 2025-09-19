@@ -48,9 +48,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }))
 
-    return [...staticPages, ...blogPages]
+    // Fetch all categories and add them to sitemap
+    const categories = await BlogService.getCategoriesWithCounts()
+
+    const categoryPages = categories.map((category) => ({
+      url: `${baseUrl}/category/${category.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }))
+
+    return [...staticPages, ...blogPages, ...categoryPages]
   } catch (error) {
-    console.error('Error fetching posts for sitemap:', error)
+    console.error('Error fetching posts/categories for sitemap:', error)
     // Return static pages only if there's an error
     return staticPages
   }

@@ -11,7 +11,7 @@ interface ShareButtonsProps {
 
 export default function ShareButtons({ title, url, className }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false)
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mindshift-blog.vercel.app"
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"
   const shareUrl = url ? `${baseUrl}${url}` : typeof window !== "undefined" ? window.location.href : baseUrl
   const shareText = `${title} - Raw motivation and brutal honesty for personal growth`
 
@@ -94,7 +94,7 @@ export default function ShareButtons({ title, url, className }: ShareButtonsProp
 
       <div className="mt-8 p-6 bg-muted brutalist-border">
         <p className="text-lg font-bold leading-relaxed text-balance">
-          HELP OTHERS DISCOVER THE BRUTAL TRUTH THEY NEED TO HEAR. SHARE THIS POST AND SPREAD THE MINDSHIFT MOVEMENT.
+          HELP OTHERS DISCOVER THE BRUTAL TRUTH THEY NEED TO HEAR. SHARE THIS POST AND SPREAD THE SHAREVAULT MOVEMENT.
         </p>
       </div>
     </div>

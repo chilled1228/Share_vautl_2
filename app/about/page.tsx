@@ -4,9 +4,9 @@ import { Target, Zap, Heart, Users } from "lucide-react"
 import { generateSEO } from "@/lib/seo"
 
 export const metadata = generateSEO({
-  title: "About MINDSHIFT - Our Mission & Values",
+  title: "About SHAREVAULT - Our Mission & Values",
   description:
-    "Learn about MINDSHIFT's mission to deliver raw, unfiltered motivation and brutal honesty for personal growth. No fluff, just actionable insights that work.",
+    "Learn about SHAREVAULT's mission to deliver raw, unfiltered motivation and brutal honesty for personal growth. No fluff, just actionable insights that work.",
   keywords: ["about mindshift", "motivational blog mission", "personal development philosophy", "brutal honesty"],
   url: "/about",
 })
@@ -103,7 +103,7 @@ export default function AboutPage() {
           <div className="space-y-8">
             <div className="bg-card brutalist-border brutalist-shadow p-8 transform -rotate-1">
               <p className="text-lg font-bold leading-relaxed">
-                MINDSHIFT was born from frustration. Frustration with the endless stream of feel-good content that makes
+                SHAREVAULT was born from frustration. Frustration with the endless stream of feel-good content that makes
                 you feel better for five minutes but changes nothing. Frustration with motivational speakers who have
                 never faced real adversity. Frustration with advice that sounds good but doesn't work.
               </p>

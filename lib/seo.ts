@@ -17,7 +17,7 @@ export function generateSEO({
   title,
   description,
   keywords = [],
-  author = "MINDSHIFT Team",
+  author = "SHAREVAULT Team",
   publishedTime,
   modifiedTime,
   section,

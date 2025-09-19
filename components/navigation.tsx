@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import MobileMenu from "./mobile-menu"
+import CategoryNav from "./category-nav"
 
 export default function Navigation() {
   return (
@@ -11,7 +12,7 @@ export default function Navigation() {
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <div className="bg-primary text-primary-foreground px-3 py-2 sm:px-6 sm:py-3 brutalist-border brutalist-shadow-sm">
-              <span className="text-lg sm:text-2xl font-black tracking-tighter">MINDSHIFT</span>
+              <span className="text-lg sm:text-2xl font-black tracking-tighter">SHAREVAULT</span>
             </div>
           </Link>
 
@@ -23,6 +24,7 @@ export default function Navigation() {
             >
               HOME
             </Link>
+            <CategoryNav />
             <Link
               href="/quotes"
               className="bg-primary text-primary-foreground px-4 py-2 lg:px-6 lg:py-3 brutalist-border brutalist-shadow-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm lg:text-base touch-target"

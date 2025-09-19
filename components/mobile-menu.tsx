@@ -34,6 +34,25 @@ export default function MobileMenu({ className }: MobileMenuProps) {
     }
   }, [isOpen])
 
+  const [categories, setCategories] = useState<Array<{name: string, slug: string, count: number}>>([])
+
+  // Fetch categories for mobile menu
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories')
+        if (response.ok) {
+          const data = await response.json()
+          setCategories(data.categories.slice(0, 4)) // Show top 4 in mobile
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      }
+    }
+
+    fetchCategories()
+  }, [])
+
   const menuItems = [
     { href: "/", label: "HOME" },
     { href: "/quotes", label: "QUOTES" },
@@ -85,6 +104,30 @@ export default function MobileMenu({ className }: MobileMenuProps) {
                 {item.label}
               </Link>
             ))}
+
+            {/* Categories Section */}
+            {categories.length > 0 && (
+              <div className="pt-4">
+                <h3 className="text-lg font-black mb-3 uppercase tracking-tight px-2">CATEGORIES</h3>
+                <div className="space-y-2">
+                  {categories.map((category) => (
+                    <Link
+                      key={category.slug}
+                      href={`/category/${category.slug}`}
+                      onClick={() => setIsOpen(false)}
+                      className="block bg-secondary text-secondary-foreground px-6 py-3 brutalist-border brutalist-shadow-sm font-bold uppercase tracking-wide touch-target hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 text-sm"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span>{category.name}</span>
+                        <span className="text-xs bg-background text-foreground px-2 py-1 brutalist-border">
+                          {category.count}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </nav>
 
           {/* Mobile CTA */}

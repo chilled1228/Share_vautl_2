@@ -24,7 +24,7 @@ export default function OrganizationSchema() {
     "foundingDate": "2024",
     "founder": {
       "@type": "Person",
-      "name": "MINDSHIFT TEAM"
+      "name": "SHAREVAULT TEAM"
     },
     "address": {
       "@type": "PostalAddress",

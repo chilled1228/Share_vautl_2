@@ -249,15 +249,94 @@ export class BlogService {
     )
     const querySnapshot = await getDocs(q)
     const categories = new Set<string>()
-    
+
     querySnapshot.docs.forEach(doc => {
       const data = doc.data()
       if (data.category) {
         categories.add(data.category)
       }
     })
-    
+
     return Array.from(categories).sort()
+  }
+
+  // Get categories with post counts
+  static async getCategoriesWithCounts(): Promise<Array<{name: string, count: number, slug: string}>> {
+    const q = query(
+      collection(db, 'posts'),
+      where('published', '==', true)
+    )
+    const querySnapshot = await getDocs(q)
+    const categoryMap = new Map<string, number>()
+
+    querySnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      if (data.category) {
+        const current = categoryMap.get(data.category) || 0
+        categoryMap.set(data.category, current + 1)
+      }
+    })
+
+    return Array.from(categoryMap.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        slug: name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      }))
+      .sort((a, b) => b.count - a.count) // Sort by count descending
+  }
+
+  // Get posts by category with pagination
+  static async getPostsByCategoryWithPagination(category: string, offset: number, limitCount: number): Promise<BlogPost[]> {
+    try {
+      // Get all posts in category first
+      const allPostsQuery = query(
+        collection(db, 'posts'),
+        where('published', '==', true),
+        orderBy('createdAt', 'desc')
+      )
+      const allPostsSnapshot = await getDocs(allPostsQuery)
+
+      // Filter by category and paginate
+      const filteredPosts = allPostsSnapshot.docs
+        .filter(doc => {
+          const data = doc.data()
+          return data.category?.toLowerCase() === category.toLowerCase()
+        })
+        .slice(offset, offset + limitCount)
+
+      return filteredPosts.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+        } as BlogPost
+      })
+    } catch (error) {
+      console.error('Error in getPostsByCategoryWithPagination:', error)
+      throw error
+    }
+  }
+
+  // Get total posts count for a category
+  static async getCategoryPostsCount(category: string): Promise<number> {
+    try {
+      const q = query(
+        collection(db, 'posts'),
+        where('published', '==', true)
+      )
+      const querySnapshot = await getDocs(q)
+
+      return querySnapshot.docs.filter(doc => {
+        const data = doc.data()
+        return data.category?.toLowerCase() === category.toLowerCase()
+      }).length
+    } catch (error) {
+      console.error('Error getting category posts count:', error)
+      return 0
+    }
   }
 
   // Get draft posts (for admin)

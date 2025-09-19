@@ -65,7 +65,7 @@ export default function DailyQuote() {
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-tight">TODAY'S DOSE OF TRUTH</h2>
           <p className="text-xl font-bold text-muted-foreground">
-            A NEW QUOTE EVERY DAY TO FUEL YOUR MINDSHIFT JOURNEY
+            A NEW QUOTE EVERY DAY TO FUEL YOUR SHAREVAULT JOURNEY
           </p>
         </div>
 

@@ -76,7 +76,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <ArticleStructuredData
         title={post.title}
         description={post.excerpt}
-        author={post.author || "MINDSHIFT TEAM"}
+        author={post.author || "SHAREVAULT TEAM"}
         publishedTime={post.createdAt.toISOString()}
         url={`/${slug}`}
         category={post.category}
@@ -88,7 +88,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         ]}
       />
       <PersonSchema
-        name={post.author || "MINDSHIFT TEAM"}
+        name={post.author || "SHAREVAULT TEAM"}
         jobTitle="Content Creator"
         company="ShareVault"
         url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"}/author/${(post.author || "mindshift-team").toLowerCase().replace(/\s+/g, '-')}`}
@@ -123,7 +123,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
             <div className="flex items-center gap-2">
               <User size={16} />
-              <span className="font-bold">{post.author || "MINDSHIFT TEAM"}</span>
+              <span className="font-bold">{post.author || "SHAREVAULT TEAM"}</span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar size={16} />
@@ -247,7 +247,7 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       title: post.title,
       description: post.excerpt,
       keywords: post.tags || [post.category.toLowerCase()],
-      author: post.author || "MINDSHIFT TEAM",
+      author: post.author || "SHAREVAULT TEAM",
       publishedTime: post.createdAt.toISOString(),
       section: post.category,
       tags: post.tags || [post.category.toLowerCase()],

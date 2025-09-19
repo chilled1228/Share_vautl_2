@@ -7,6 +7,7 @@ import { Suspense } from "react"
 import { WebsiteStructuredData, OrganizationStructuredData } from "@/components/structured-data"
 import { defaultSEO } from "@/lib/seo"
 import { getCanonicalUrl } from "@/lib/seo-utils"
+import DynamicFooter from "@/components/dynamic-footer"
 import "./globals.css"
 
 export const metadata: Metadata = {
