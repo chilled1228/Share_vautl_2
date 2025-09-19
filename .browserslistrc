@@ -1,0 +1,23 @@
+# Modern browsers only - reduces polyfills and transpilation
+# This targets browsers that support ES2020+ features natively
+
+# Modern browsers with good ES2020+ support
+Chrome >= 80
+Firefox >= 80
+Safari >= 14
+Edge >= 80
+
+# Avoid unnecessary polyfills for these modern versions
+not IE > 0
+not IE_Mob > 0
+not op_mini all
+
+# Modern mobile browsers
+iOS >= 14
+Android >= 80
+
+# Reduce bundle size by targeting recent versions
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Safari versions
+last 2 Edge versions

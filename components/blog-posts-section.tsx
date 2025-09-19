@@ -1,28 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
+import { useState, useEffect, memo, useCallback } from 'react'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { BlogPost } from '@/types/blog'
+import BlogPostCard from './blog-post-card'
 
 interface BlogPostsSectionProps {
   initialPosts: BlogPost[]
   totalPosts: number
 }
 
-// Helper function to get color for category
-function getCategoryColor(index: number): string {
-  const colors = ["bg-primary", "bg-secondary", "bg-accent", "bg-destructive"]
-  return colors[index % colors.length]
-}
-
-export default function BlogPostsSection({ initialPosts, totalPosts }: BlogPostsSectionProps) {
+const BlogPostsSection = memo(function BlogPostsSection({ initialPosts, totalPosts }: BlogPostsSectionProps) {
   const [posts, setPosts] = useState<BlogPost[]>(initialPosts)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(initialPosts.length < totalPosts)
 
-  const loadMorePosts = async () => {
+  const loadMorePosts = useCallback(async () => {
     if (loading || !hasMore) return
 
     setLoading(true)
@@ -40,7 +33,7 @@ export default function BlogPostsSection({ initialPosts, totalPosts }: BlogPosts
     } finally {
       setLoading(false)
     }
-  }
+  }, [loading, hasMore, posts.length, totalPosts])
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -54,49 +47,11 @@ export default function BlogPostsSection({ initialPosts, totalPosts }: BlogPosts
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {posts.map((post, index) => (
-            <article
+            <BlogPostCard
               key={post.id}
-              className={`bg-card brutalist-border brutalist-shadow transform ${
-                index % 2 === 0 ? "rotate-1" : "-rotate-1"
-              } hover:rotate-0 transition-transform duration-300`}
-            >
-              {post.imageUrl ? (
-                <div className="h-48 overflow-hidden">
-                  <Image
-                    src={post.imageUrl}
-                    alt={post.title}
-                    width={400}
-                    height={192}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-              ) : (
-                <div className={`h-48 ${getCategoryColor(index)} flex items-center justify-center`}>
-                  <span className="text-white text-lg font-black uppercase tracking-wide opacity-50">
-                    {post.category}
-                  </span>
-                </div>
-              )}
-              <div className="p-6">
-                <span className="bg-foreground text-background px-3 py-1 brutalist-border text-sm font-bold uppercase tracking-wide">
-                  {post.category}
-                </span>
-                <h3 className="text-xl font-black mt-3 mb-2 uppercase tracking-tight text-balance line-clamp-2">
-                  {post.title}
-                </h3>
-                <p className="text-base font-bold mb-4 leading-relaxed text-balance line-clamp-3">
-                  {post.excerpt}
-                </p>
-                <Link
-                  href={`/${post.slug}`}
-                  prefetch={true}
-                  className="inline-flex items-center gap-2 text-primary font-bold uppercase tracking-wide hover:text-secondary transition-colors"
-                >
-                  READ MORE <ArrowRight size={16} />
-                </Link>
-              </div>
-            </article>
+              post={post}
+              index={index}
+            />
           ))}
         </div>
 
@@ -132,4 +87,6 @@ export default function BlogPostsSection({ initialPosts, totalPosts }: BlogPosts
       </div>
     </section>
   )
-}
+})
+
+export default BlogPostsSection

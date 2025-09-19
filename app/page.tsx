@@ -1,9 +1,15 @@
 import Navigation from "@/components/navigation"
-import DynamicFooter from "@/components/dynamic-footer"
 import Link from "next/link"
 import { ArrowRight, Quote } from "lucide-react"
 import { BlogService } from "@/lib/blog-service"
 import BlogPostsSection from "@/components/blog-posts-section"
+import dynamic from "next/dynamic"
+
+// Lazy load footer since it's below the fold
+const DynamicFooter = dynamic(() => import("@/components/dynamic-footer"), {
+  loading: () => <div className="h-64 bg-muted animate-pulse" />,
+  ssr: false
+})
 
 // Helper function to get color for category
 function getCategoryColor(index: number): string {

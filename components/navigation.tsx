@@ -1,10 +1,11 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
 import MobileMenu from "./mobile-menu"
 import CategoryNav from "./category-nav"
 
-export default function Navigation() {
+const Navigation = memo(function Navigation() {
   return (
     <nav className="brutalist-border-thick bg-card sticky top-0 z-50 brutalist-shadow">
       <div className="container-mobile">
@@ -51,4 +52,6 @@ export default function Navigation() {
       </div>
     </nav>
   )
-}
+})
+
+export default Navigation

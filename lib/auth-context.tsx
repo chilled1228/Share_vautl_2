@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { authService, type AdminUser } from '@/lib/auth-service'
+import { lazyAuthService, type AdminUser } from '@/lib/auth-service-lazy'
 
 interface AuthContextType {
   user: AdminUser | null
@@ -21,8 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Set up auth state listener
-    const unsubscribe = authService.onAuthStateChanged((authUser) => {
+    // Set up auth state listener with lazy loading
+    const unsubscribe = lazyAuthService.onAuthStateChanged((authUser) => {
       setUser(authUser)
       setIsLoading(false)
     })
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
     
     try {
-      const authUser = await authService.signInWithEmail(email, password)
+      const authUser = await lazyAuthService.signInWithEmail(email, password)
       setUser(authUser)
     } catch (err: any) {
       setError(err.message)
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
     
     try {
-      const authUser = await authService.signInWithGoogle()
+      const authUser = await lazyAuthService.signInWithGoogle()
       setUser(authUser)
     } catch (err: any) {
       setError(err.message)
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
     
     try {
-      await authService.signOut()
+      await lazyAuthService.signOut()
       setUser(null)
     } catch (err: any) {
       setError(err.message)
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
     
     try {
-      const refreshedUser = await authService.getCurrentUser()
+      const refreshedUser = await lazyAuthService.getCurrentUser()
       setUser(refreshedUser)
     } catch (err: any) {
       setError(err.message)
