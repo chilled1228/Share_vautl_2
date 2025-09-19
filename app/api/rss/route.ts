@@ -45,10 +45,10 @@ export async function GET() {
      xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
      xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
-    <title>ShareVault - Inspiring Stories and Life Wisdom</title>
+    <title>ShareVault - Raw Motivation & Brutal Honesty</title>
     <atom:link href="${siteUrl}/api/rss" rel="self" type="application/rss+xml"/>
     <link>${siteUrl}</link>
-    <description>Discover inspiring stories, life wisdom, and personal growth insights to transform your life.</description>
+    <description>Unfiltered motivation and brutal honesty for personal growth. Powerful quotes with context, actionable insights, and raw truth for those who refuse to settle.</description>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <language>en-US</language>
     <sy:updatePeriod>hourly</sy:updatePeriod>
@@ -65,8 +65,10 @@ export async function GET() {
     <webMaster>noreply@sharevault.in (ShareVault Team)</webMaster>
     <copyright>© ${new Date().getFullYear()} ShareVault. All rights reserved.</copyright>
     <category>Personal Development</category>
+    <category>Motivation</category>
     <category>Inspiration</category>
-    <category>Life Wisdom</category>
+    <category>Mindset</category>
+    <category>Self Improvement</category>
     ${rssItems}
   </channel>
 </rss>`

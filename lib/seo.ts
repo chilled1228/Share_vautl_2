@@ -25,9 +25,9 @@ export function generateSEO({
   image = "/og-image.png",
   url,
 }: SEOProps): Metadata {
-  const siteName = "MINDSHIFT"
+  const siteName = "ShareVault"
   const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mindshift-blog.vercel.app"
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"
   const fullUrl = url ? `${baseUrl}${url}` : baseUrl
   const imageUrl = image.startsWith("http") ? image : `${baseUrl}${image}`
 
@@ -42,6 +42,8 @@ export function generateSEO({
     "quotes",
     "brutal honesty",
     "raw motivation",
+    "sharevault",
+    "mindshift",
     ...keywords,
     ...tags,
   ]
@@ -88,8 +90,8 @@ export function generateSEO({
       title: fullTitle,
       description,
       images: [imageUrl],
-      creator: "@mindshift_blog",
-      site: "@mindshift_blog",
+      creator: "@sharevault",
+      site: "@sharevault",
     },
     alternates: {
       canonical: fullUrl,
@@ -99,8 +101,8 @@ export function generateSEO({
 }
 
 export const defaultSEO = generateSEO({
-  title: "MINDSHIFT - Raw Motivation & Brutal Honesty",
+  title: "ShareVault - Raw Motivation & Brutal Honesty",
   description:
     "Unfiltered motivation and brutal honesty for personal growth. Powerful quotes with context, actionable insights, and raw truth for those who refuse to settle.",
-  keywords: ["motivational blog", "personal development", "self-help", "mindset coaching"],
+  keywords: ["motivational blog", "personal development", "self-help", "mindset coaching", "quote vault", "inspiration vault"],
 })

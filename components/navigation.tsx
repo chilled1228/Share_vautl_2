@@ -24,12 +24,6 @@ export default function Navigation() {
               HOME
             </Link>
             <Link
-              href="/blog"
-              className="bg-secondary text-secondary-foreground px-4 py-2 lg:px-6 lg:py-3 brutalist-border brutalist-shadow-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm lg:text-base touch-target"
-            >
-              BLOG
-            </Link>
-            <Link
               href="/quotes"
               className="bg-primary text-primary-foreground px-4 py-2 lg:px-6 lg:py-3 brutalist-border brutalist-shadow-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm lg:text-base touch-target"
             >

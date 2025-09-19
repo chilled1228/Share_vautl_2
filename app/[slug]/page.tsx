@@ -3,6 +3,8 @@ import Footer from "@/components/footer"
 import QuoteCard from "@/components/quote-card"
 import ShareButtons from "@/components/share-buttons"
 import { ArticleStructuredData } from "@/components/structured-data"
+import BreadcrumbSchema from "@/components/structured-data/breadcrumb-schema"
+import PersonSchema from "@/components/structured-data/person-schema"
 import EnhancedContent from "@/components/enhanced-content"
 import { generateSEO } from "@/lib/seo"
 import { BlogService } from "@/lib/blog-service"
@@ -79,6 +81,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         url={`/${slug}`}
         category={post.category}
       />
+      <BreadcrumbSchema
+        items={[
+          { name: "Home", item: process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in" },
+          { name: post.title, item: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"}/${slug}` }
+        ]}
+      />
+      <PersonSchema
+        name={post.author || "MINDSHIFT TEAM"}
+        jobTitle="Content Creator"
+        company="ShareVault"
+        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"}/author/${(post.author || "mindshift-team").toLowerCase().replace(/\s+/g, '-')}`}
+        description="Motivation and inspiration content creator focused on personal growth and mindset development"
+      />
 
       <Navigation />
 
@@ -86,11 +101,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <header className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <Link
-            href="/blog"
+            href="/"
             className="inline-flex items-center gap-2 text-primary font-bold uppercase tracking-wide hover:text-secondary transition-colors mb-8"
           >
             <ArrowLeft size={20} />
-            BACK TO BLOG
+            BACK TO HOME
           </Link>
 
           <div className="mb-8">

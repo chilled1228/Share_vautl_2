@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next"
+import { BlogService } from "@/lib/blog-service"
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mindshift-blog.vercel.app"
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"
 
   const staticPages = [
     {
@@ -9,12 +10,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: "daily" as const,
       priority: 1,
-    },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "daily" as const,
-      priority: 0.9,
     },
     {
       url: `${baseUrl}/quotes`,
@@ -28,23 +23,35 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
   ]
 
-  const blogPosts = [
-    "discipline-equals-freedom",
-    "embrace-the-grind",
-    "mindset-is-everything",
-    "fear-is-a-liar",
-    "consistency-beats-perfection",
-    "your-comfort-zone-is-a-prison",
-  ]
+  try {
+    // Fetch all blog posts from Firebase
+    const posts = await BlogService.getPosts()
 
-  const blogPages = blogPosts.map((slug) => ({
-    url: `${baseUrl}/blog/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }))
+    const blogPages = posts.map((post) => ({
+      url: `${baseUrl}/${post.slug}`, // Using clean URLs without /blog/ prefix
+      lastModified: post.updatedAt || post.createdAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }))
 
-  return [...staticPages, ...blogPages]
+    return [...staticPages, ...blogPages]
+  } catch (error) {
+    console.error('Error fetching posts for sitemap:', error)
+    // Return static pages only if there's an error
+    return staticPages
+  }
 }

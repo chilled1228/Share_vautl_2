@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy, limit } from 'firebase/firestore'
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
 import { BlogPost, MediaFile } from '@/types/blog'
@@ -138,6 +138,48 @@ export class BlogService {
       } as BlogPost
     }
     return null
+  }
+
+  static async getPostsWithPagination(offset: number, limitCount: number): Promise<BlogPost[]> {
+    try {
+      // First get all posts to determine the starting point
+      const allPostsQuery = query(
+        collection(db, 'posts'),
+        where('published', '==', true),
+        orderBy('createdAt', 'desc')
+      )
+      const allPostsSnapshot = await getDocs(allPostsQuery)
+
+      // Get the posts we want (skip 'offset' number of documents)
+      const docsToReturn = allPostsSnapshot.docs.slice(offset, offset + limitCount)
+
+      return docsToReturn.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+        } as BlogPost
+      })
+    } catch (error) {
+      console.error('Error in getPostsWithPagination:', error)
+      throw error
+    }
+  }
+
+  static async getTotalPostsCount(): Promise<number> {
+    try {
+      const q = query(
+        collection(db, 'posts'),
+        where('published', '==', true)
+      )
+      const querySnapshot = await getDocs(q)
+      return querySnapshot.docs.length
+    } catch (error) {
+      console.error('Error getting total posts count:', error)
+      return 0
+    }
   }
 
   static async updatePost(id: string, updates: Partial<BlogPost>): Promise<void> {

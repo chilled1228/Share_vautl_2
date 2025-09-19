@@ -36,7 +36,6 @@ export default function MobileMenu({ className }: MobileMenuProps) {
 
   const menuItems = [
     { href: "/", label: "HOME" },
-    { href: "/blog", label: "BLOG" },
     { href: "/quotes", label: "QUOTES" },
     { href: "/about", label: "ABOUT" },
   ]
@@ -94,13 +93,13 @@ export default function MobileMenu({ className }: MobileMenuProps) {
             <p className="text-sm font-bold leading-relaxed mb-4">
               Join thousands who refuse to settle for mediocrity.
             </p>
-            <Link
-              href="/blog"
+            <a
+              href="#all-posts"
               onClick={() => setIsOpen(false)}
               className="inline-block bg-secondary text-secondary-foreground px-4 py-2 brutalist-border text-sm font-bold uppercase tracking-wide touch-target"
             >
               START NOW
-            </Link>
+            </a>
           </div>
         </div>
       </div>

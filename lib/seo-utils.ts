@@ -26,9 +26,6 @@ export function getSearchUrl(query: string): string {
   return `${getCanonicalUrl('search')}?q=${encodeURIComponent(query)}`
 }
 
-export function getBlogUrl(): string {
-  return getCanonicalUrl('blog')
-}
 
 export function getOgImageUrl(imageName: string = 'og-image.jpg'): string {
   return getImageUrl(imageName)
