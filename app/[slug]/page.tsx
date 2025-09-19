@@ -5,21 +5,33 @@ import ShareButtons from "@/components/share-buttons"
 import { ArticleStructuredData } from "@/components/structured-data"
 import BreadcrumbSchema from "@/components/structured-data/breadcrumb-schema"
 import PersonSchema from "@/components/structured-data/person-schema"
-import EnhancedContent from "@/components/enhanced-content"
+import QuoteActionsContainer from "@/components/quote-actions-container"
 import { generateSEO } from "@/lib/seo"
 import { BlogService } from "@/lib/blog-service"
+import { parseContentServer } from "@/lib/content-processor"
+import { PerformanceMonitor } from "@/lib/performance"
 import { BlogPost } from "@/types/blog"
 import Link from "next/link"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import { notFound } from "next/navigation"
 
+// Helper function to safely convert any date to ISO string
+function toISOStringSafe(date: any): string {
+  if (!date) return new Date().toISOString()
+  if (typeof date.toISOString === 'function') return date.toISOString()
+  if (typeof date.toDate === 'function') return date.toDate().toISOString()
+  if (date._seconds) return new Date(date._seconds * 1000).toISOString()
+  return new Date().toISOString()
+}
+
 // Helper function to format date
-function formatDate(date: Date): string {
+function formatDate(date: any): string {
+  const isoString = toISOStringSafe(date)
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
-  }).format(date)
+  }).format(new Date(isoString))
 }
 
 // Helper function to calculate read time
@@ -30,46 +42,34 @@ function calculateReadTime(content: string): string {
   return `${minutes} min read`
 }
 
-// Helper function to parse content into sections
-function parseContent(content: string) {
-  // Extract intro from content (first 200 characters as plain text)
-  const tempDiv = document.createElement('div')
-  tempDiv.innerHTML = content
-  const textContent = tempDiv.textContent || tempDiv.innerText || ''
-
-  return {
-    intro: textContent.substring(0, 200) + '...',
-    fullContent: content
-  }
-}
-
-// Server-side version of parseContent
-function parseContentServer(content: string) {
-  // For server-side, we'll use a simple regex to strip HTML for intro
-  const textContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-
-  return {
-    intro: textContent.substring(0, 200) + '...',
-    fullContent: content
-  }
-}
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
+  PerformanceMonitor.startTimer(`post-page-${(await params).slug}`)
   const { slug } = await params
 
   // Fetch post from Firebase by slug
-  const post = await BlogService.getPostBySlug(slug)
+  const post = await PerformanceMonitor.measureFirebaseOperation(
+    `post-fetch-${slug}`,
+    () => BlogService.getPostBySlug(slug)
+  )
 
   if (!post) {
+    PerformanceMonitor.endTimer(`post-page-${slug}`)
     notFound()
   }
 
   // Parse content for display (use server-side version)
   const parsedContent = parseContentServer(post.content)
+
+  // Fetch related posts separately
+  const relatedPosts = await PerformanceMonitor.measureFirebaseOperation(
+    `related-posts-fetch-${slug}`,
+    () => BlogService.getRelatedPostsOptimized(post.category, slug, 3)
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,7 +77,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         title={post.title}
         description={post.excerpt}
         author={post.author || "SHAREVAULT TEAM"}
-        publishedTime={post.createdAt.toISOString()}
+        publishedTime={toISOStringSafe(post.createdAt)}
         url={`/${slug}`}
         category={post.category}
       />
@@ -148,12 +148,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           {/* Main Content */}
           <div className="space-y-12">
             <section>
-              <EnhancedContent
-                content={parsedContent.fullContent}
-                className="prose"
+              <div
+                className="prose prose-lg max-w-none prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tight prose-p:font-bold prose-p:leading-relaxed prose-blockquote:bg-muted prose-blockquote:p-6 prose-blockquote:brutalist-border prose-blockquote:brutalist-shadow prose-blockquote:font-black prose-blockquote:text-xl prose-blockquote:not-italic prose-blockquote:transform prose-blockquote:rotate-[0.5deg] prose-blockquote:my-8"
+                dangerouslySetInnerHTML={{ __html: parsedContent.fullContent }}
               />
             </section>
           </div>
+
+          {/* Quote Actions */}
+          <QuoteActionsContainer quotes={parsedContent.quotes} />
 
           {/* Share */}
           <div className="mt-16 pt-8 border-t-4 border-border">
@@ -163,7 +166,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           {/* Related Posts */}
           <section className="mt-16">
             <h2 className="text-3xl md:text-4xl font-black mb-8 uppercase tracking-tight">KEEP READING</h2>
-            <RelatedPosts currentSlug={slug} category={post.category} />
+            <RelatedPosts relatedPosts={relatedPosts} />
           </section>
         </div>
       </article>
@@ -171,28 +174,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <Footer />
     </div>
   )
+
+  // End performance timer
+  PerformanceMonitor.endTimer(`post-page-${slug}`)
 }
 
-// Related Posts Component
-async function RelatedPosts({ currentSlug, category }: { currentSlug: string, category: string }) {
-  try {
-    // Get posts from the same category
-    const relatedPosts = await BlogService.getPostsByCategory(category, 3)
-    // Filter out current post
-    const filteredPosts = relatedPosts.filter(post => post.slug !== currentSlug).slice(0, 2)
-
-    if (filteredPosts.length === 0) {
-      // If no related posts, get any recent posts
-      const recentPosts = await BlogService.getPosts(3)
-      const filtered = recentPosts.filter(post => post.slug !== currentSlug).slice(0, 2)
-      return <RelatedPostsGrid posts={filtered} />
-    }
-
-    return <RelatedPostsGrid posts={filteredPosts} />
-  } catch (error) {
-    console.error('Error fetching related posts:', error)
+// Optimized Related Posts Component - now uses pre-fetched data
+function RelatedPosts({ relatedPosts }: { relatedPosts: BlogPost[] }) {
+  if (relatedPosts.length === 0) {
     return null
   }
+
+  return <RelatedPostsGrid posts={relatedPosts.slice(0, 2)} />
 }
 
 // Related Posts Grid Component
@@ -218,43 +211,62 @@ function RelatedPostsGrid({ posts }: { posts: BlogPost[] }) {
   )
 }
 
+// Enable ISR for faster performance
+export const revalidate = 3600 // Revalidate every hour
+
 export async function generateStaticParams() {
+  PerformanceMonitor.startTimer('generate-static-params')
   try {
     // Get all published posts to generate static params
-    const posts = await BlogService.getPosts()
+    const posts = await PerformanceMonitor.measureFirebaseOperation(
+      'static-params-fetch',
+      () => BlogService.getPosts()
+    )
+    console.log(`✅ [generateStaticParams] Generated static params for ${posts.length} posts`)
+    PerformanceMonitor.endTimer('generate-static-params')
     return posts.map((post) => ({
       slug: post.slug,
     }))
   } catch (error) {
     console.error('Error generating static params:', error)
+    PerformanceMonitor.endTimer('generate-static-params')
     return []
   }
 }
 
 export async function generateMetadata({ params }: BlogPostPageProps) {
+  PerformanceMonitor.startTimer(`generate-metadata-${(await params).slug}`)
   const { slug } = await params
 
   try {
-    const post = await BlogService.getPostBySlug(slug)
+    const post = await PerformanceMonitor.measureFirebaseOperation(
+      `metadata-fetch-${slug}`,
+      () => BlogService.getPostBySlug(slug)
+    )
 
     if (!post) {
+      PerformanceMonitor.endTimer(`generate-metadata-${slug}`)
       return {
         title: "Post Not Found",
       }
     }
 
-    return generateSEO({
+    const metadata = generateSEO({
       title: post.title,
       description: post.excerpt,
       keywords: post.tags || [post.category.toLowerCase()],
       author: post.author || "SHAREVAULT TEAM",
-      publishedTime: post.createdAt.toISOString(),
+      publishedTime: toISOStringSafe(post.createdAt),
       section: post.category,
       tags: post.tags || [post.category.toLowerCase()],
       url: `/${slug}`,
     })
+
+    PerformanceMonitor.endTimer(`generate-metadata-${slug}`)
+    return metadata
   } catch (error) {
     console.error('Error generating metadata:', error)
+    PerformanceMonitor.endTimer(`generate-metadata-${slug}`)
     return {
       title: "Post Not Found",
     }

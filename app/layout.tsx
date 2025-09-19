@@ -8,6 +8,8 @@ import { WebsiteStructuredData, OrganizationStructuredData } from "@/components/
 import { defaultSEO } from "@/lib/seo"
 import { getCanonicalUrl } from "@/lib/seo-utils"
 import DynamicFooter from "@/components/dynamic-footer"
+import WebVitals from "@/components/web-vitals"
+import { PerformanceMonitor } from "@/lib/performance"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -47,8 +49,21 @@ export default function RootLayout({
         <meta name="google-site-verification" content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION} />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+        <WebVitals />
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />
+        <script dangerouslySetInnerHTML={{ __html: `
+          // Initialize performance monitoring
+          if (typeof window !== 'undefined') {
+            window.addEventListener('load', () => {
+              console.log('🚀 [Performance] Page fully loaded');
+              // Initialize Web Vitals
+              if ('PerformanceMonitor' in window) {
+                PerformanceMonitor.initWebVitals();
+              }
+            });
+          }
+        `}} />
       </body>
     </html>
   )
