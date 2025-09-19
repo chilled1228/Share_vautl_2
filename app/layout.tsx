@@ -10,6 +10,7 @@ import { getCanonicalUrl } from "@/lib/seo-utils"
 import DynamicFooter from "@/components/dynamic-footer"
 import WebVitals from "@/components/web-vitals"
 import { PerformanceMonitor } from "@/lib/performance"
+import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -50,7 +51,9 @@ export default function RootLayout({
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <WebVitals />
-        <Suspense fallback={null}>{children}</Suspense>
+        <AuthProvider>
+          <Suspense fallback={null}>{children}</Suspense>
+        </AuthProvider>
         <Analytics />
         <script dangerouslySetInnerHTML={{ __html: `
           // Initialize performance monitoring

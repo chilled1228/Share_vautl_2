@@ -57,6 +57,7 @@ export default function MobileMenu({ className }: MobileMenuProps) {
     { href: "/", label: "HOME" },
     { href: "/quotes", label: "QUOTES" },
     { href: "/about", label: "ABOUT" },
+    { href: "/admin", label: "ADMIN" },
   ]
 
   return (

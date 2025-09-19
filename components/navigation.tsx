@@ -37,6 +37,12 @@ export default function Navigation() {
             >
               ABOUT
             </Link>
+            <Link
+              href="/admin"
+              className="bg-destructive text-destructive-foreground px-4 py-2 lg:px-6 lg:py-3 brutalist-border brutalist-shadow-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm lg:text-base touch-target"
+            >
+              ADMIN
+            </Link>
           </div>
 
           {/* Mobile Menu */}

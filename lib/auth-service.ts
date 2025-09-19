@@ -57,7 +57,7 @@ class AuthService {
       photoURL: firebaseUser.photoURL,
       emailVerified: firebaseUser.emailVerified,
       isAdmin,
-      provider:
+          provider:
         firebaseUser.providerData[0]?.providerId === 'google.com'
           ? 'google'
           : 'email',
@@ -136,11 +136,6 @@ class AuthService {
       await this.createUserDocument(result.user)
       const adminUser = await this.transformFirebaseUser(result.user)
 
-      /* if (!adminUser?.isAdmin) {
-        await this.signOut()
-        throw new Error('Access denied: Admin privileges required')
-      } */
-
       if (!adminUser) {
         throw new Error('Failed to create user profile')
       }
@@ -155,8 +150,6 @@ class AuthService {
         throw new Error('Sign-in was cancelled')
       } else if (error.code === 'auth/popup-blocked') {
         throw new Error('Please enable popups and try again')
-      } else if (error.message === 'Access denied: Admin privileges required') {
-        throw error
       } else {
         throw new Error('Failed to sign in with Google')
       }
