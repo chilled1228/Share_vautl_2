@@ -5,7 +5,7 @@ import ShareButtons from "@/components/share-buttons"
 import { ArticleStructuredData } from "@/components/structured-data"
 import BreadcrumbSchema from "@/components/structured-data/breadcrumb-schema"
 import PersonSchema from "@/components/structured-data/person-schema"
-import QuoteActionsContainer from "@/components/quote-actions-container"
+import QuoteActionsInjector from "@/components/quote-actions-injector"
 import { generateSEO } from "@/lib/seo"
 import { BlogService } from "@/lib/blog-service"
 import { parseContentServer } from "@/lib/content-processor"
@@ -155,8 +155,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </section>
           </div>
 
-          {/* Quote Actions */}
-          <QuoteActionsContainer quotes={parsedContent.quotes} />
+          {/* Quote Actions Injector */}
+          <QuoteActionsInjector quotes={parsedContent.quotes} />
 
           {/* Share */}
           <div className="mt-16 pt-8 border-t-4 border-border">

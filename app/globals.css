@@ -349,3 +349,13 @@
     @apply bg-muted font-black uppercase tracking-tight;
   }
 }
+
+/* Quote Actions Container - positioned after blockquotes */
+.quote-actions-container {
+  @apply mt-4 flex gap-3 justify-center;
+}
+
+/* Ensure proper spacing between blockquote and actions */
+.prose blockquote + .quote-actions-container {
+  @apply -mt-2 mb-6;
+}

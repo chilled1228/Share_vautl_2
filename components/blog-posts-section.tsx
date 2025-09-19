@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { BlogPost } from '@/types/blog'
 
@@ -61,10 +62,13 @@ export default function BlogPostsSection({ initialPosts, totalPosts }: BlogPosts
             >
               {post.imageUrl ? (
                 <div className="h-48 overflow-hidden">
-                  <img
+                  <Image
                     src={post.imageUrl}
                     alt={post.title}
+                    width={400}
+                    height={192}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </div>
               ) : (
@@ -86,6 +90,7 @@ export default function BlogPostsSection({ initialPosts, totalPosts }: BlogPosts
                 </p>
                 <Link
                   href={`/${post.slug}`}
+                  prefetch={true}
                   className="inline-flex items-center gap-2 text-primary font-bold uppercase tracking-wide hover:text-secondary transition-colors"
                 >
                   READ MORE <ArrowRight size={16} />

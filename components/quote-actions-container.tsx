@@ -14,7 +14,7 @@ export default function QuoteActionsContainer({ quotes }: QuoteActionsContainerP
         <QuoteActions
           key={quote.id}
           quote={quote.text}
-          className="quote-actions-container mt-4 flex gap-3 justify-center"
+          className="mt-4 flex gap-3 justify-center"
         />
       ))}
     </>

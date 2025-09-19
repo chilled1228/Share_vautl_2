@@ -10,6 +10,10 @@ interface Category {
   slug: string
 }
 
+// Cache categories in localStorage for 30 minutes
+const CATEGORIES_CACHE_KEY = 'categories-cache'
+const CACHE_DURATION = 30 * 60 * 1000 // 30 minutes
+
 export default function CategoryNav() {
   const [categories, setCategories] = useState<Category[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -18,10 +22,31 @@ export default function CategoryNav() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/categories')
+        // Try to get from localStorage first
+        const cachedData = localStorage.getItem(CATEGORIES_CACHE_KEY)
+        if (cachedData) {
+          const { categories: cachedCategories, timestamp } = JSON.parse(cachedData)
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setCategories(cachedCategories.slice(0, 6))
+            setLoading(false)
+            return
+          }
+        }
+
+        // Fetch from API if cache is expired or doesn't exist
+        const response = await fetch('/api/categories', {
+          cache: 'force-cache' // Use browser cache
+        })
         if (response.ok) {
           const data = await response.json()
-          setCategories(data.categories.slice(0, 6)) // Show top 6 categories
+          const topCategories = data.categories.slice(0, 6)
+          setCategories(topCategories)
+
+          // Cache in localStorage
+          localStorage.setItem(CATEGORIES_CACHE_KEY, JSON.stringify({
+            categories: data.categories,
+            timestamp: Date.now()
+          }))
         }
       } catch (error) {
         console.error('Error fetching categories:', error)

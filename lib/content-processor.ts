@@ -20,7 +20,7 @@ export function processContentAndExtractQuotes(content: string): {
   let processedContent = content
   let quoteIndex = 0
 
-  // Parse HTML and extract quotes, replacing with placeholder divs
+  // Parse HTML and extract quotes, adding quote actions after blockquotes
   processedContent = processedContent.replace(
     /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi,
     (match, quoteContent) => {
@@ -35,8 +35,8 @@ export function processContentAndExtractQuotes(content: string): {
         const quoteId = `quote-${quoteIndex++}`
         quotes.push({ text: cleanText, id: quoteId })
 
-        // Replace with a placeholder div where React component will be mounted
-        return match.replace('</blockquote>', `<div id="${quoteId}" class="quote-actions-placeholder"></div></blockquote>`)
+        // Add quote actions div after the blockquote
+        return `${match}<div id="${quoteId}" class="quote-actions-container"></div>`
       }
 
       return match
