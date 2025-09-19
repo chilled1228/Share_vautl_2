@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users Collection
+    match /users/{userId} {
+      // Allow users to read and write to their own document
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      // Allow users to create their own document
+      allow create: if request.auth != null;
+    }
+
+    // Posts Collection
+    match /posts/{postId} {
+      // Allow anyone to read published posts
+      allow read: if resource.data.published == true;
+      // Allow authenticated admins to read any post (including drafts)
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // Allow authenticated admins to create, update, and delete posts
+      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Allow authenticated admins to list all users and posts
+    match /users/{document=**} {
+      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    match /posts/{document=**} {
+      // Allow anyone to list published posts
+      allow list: if resource.data.published == true;
+      // Allow authenticated admins to list all posts (including drafts)
+      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+  }
+}
