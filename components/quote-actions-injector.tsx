@@ -90,7 +90,7 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
             <div class="quote-actions-container mt-4 flex gap-3 justify-center">
               <button
                 onclick="window.quoteActions && window.quoteActions.copy('${quote.text.replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
-                class="bg-primary text-primary-foreground px-4 py-2 brutalist-border brutalist-shadow-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm touch-target inline-flex items-center gap-2"
+                class="bg-primary text-primary-foreground px-4 py-2 brutalist-border brutalist-shadow-sm btn-gradient-hover hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm touch-target inline-flex items-center gap-2"
                 aria-label="Copy quote"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -100,7 +100,7 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
               </button>
               <button
                 onclick="window.quoteActions && window.quoteActions.share('${quote.text.replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
-                class="bg-secondary text-secondary-foreground px-4 py-2 brutalist-border brutalist-shadow-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm touch-target inline-flex items-center gap-2"
+                class="bg-secondary text-secondary-foreground px-4 py-2 brutalist-border brutalist-shadow-sm btn-gradient-hover hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm touch-target inline-flex items-center gap-2"
                 aria-label="Share quote"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
