@@ -18,7 +18,8 @@ function getCategoryColor(index: number): string {
 }
 
 export default async function HomePage() {
-  // Fetch initial blog posts and total count
+  // Fetch featured posts, initial blog posts and total count
+  const featuredPosts = await BlogService.getFeaturedPosts(3)
   const initialPosts = await BlogService.getPosts(12)
   const totalPosts = await BlogService.getTotalPostsCount()
   return (
@@ -69,6 +70,50 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Featured Posts Section */}
+      {featuredPosts.length > 0 && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-black mb-12 text-center">
+              <span className="bg-destructive text-destructive-foreground px-6 py-3 brutalist-border brutalist-shadow inline-block transform -rotate-1">
+                FEATURED MOTIVATION
+              </span>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredPosts.map((post, index) => (
+                <Link key={post.id} href={`/${post.slug}`} className="group">
+                  <article className="bg-card brutalist-border brutalist-shadow p-6 h-full hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-200">
+                    {post.imageUrl && (
+                      <div className="mb-4 overflow-hidden">
+                        <img
+                          src={post.imageUrl}
+                          alt={post.title}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                      </div>
+                    )}
+                    <div className={`inline-block px-3 py-1 text-sm font-bold mb-3 brutalist-border ${getCategoryColor(index)}`}>
+                      {post.category}
+                    </div>
+                    <h3 className="text-xl font-black mb-3 group-hover:text-primary transition-colors line-clamp-3">
+                      {post.title}
+                    </h3>
+                    <p className="text-muted-foreground line-clamp-3">
+                      {post.excerpt}
+                    </p>
+                    <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="bg-primary text-primary-foreground px-2 py-1 text-xs font-bold brutalist-border">
+                        FEATURED
+                      </span>
+                      <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </article>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* All Blog Posts */}
       <div id="all-posts">

@@ -120,6 +120,17 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           <p className="text-xl md:text-2xl font-bold mb-8 leading-relaxed text-balance">{post.excerpt}</p>
 
+          {/* Featured Image */}
+          {post.imageUrl && (
+            <div className="mb-8 brutalist-border brutalist-shadow transform rotate-1">
+              <img
+                src={post.imageUrl}
+                alt={post.title}
+                className="w-full h-64 md:h-96 object-cover"
+              />
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
             <div className="flex items-center gap-2">
               <User size={16} />
@@ -260,6 +271,7 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       section: post.category,
       tags: post.tags || [post.category.toLowerCase()],
       url: `/${slug}`,
+      image: post.imageUrl || "/og-image.png",
     })
 
     PerformanceMonitor.endTimer(`generate-metadata-${slug}`)
