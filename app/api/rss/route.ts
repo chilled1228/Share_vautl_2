@@ -85,7 +85,7 @@ export async function GET() {
       <title><![CDATA[${post.title}]]></title>
       <description><![CDATA[${cleanDescription}]]></description>
       <link>${postUrl}</link>
-      <guid isPermaLink="true">${postUrl}</guid>
+      <guid isPermaLink="false">${post.id}</guid>
       <pubDate>${new Date(post.createdAt).toUTCString()}</pubDate>
       <author>noreply@sharevault.in (ShareVault)</author>
       <category><![CDATA[${post.category || 'Blog'}]]></category>
@@ -95,6 +95,7 @@ export async function GET() {
         <media:title><![CDATA[${post.title}]]></media:title>
         <media:description><![CDATA[${plainDescription}]]></media:description>
       </media:content>
+      <media:thumbnail url="${imageUrl}" width="150" height="150"/>
     </item>`
     }).join('')
 
