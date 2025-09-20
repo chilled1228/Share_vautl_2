@@ -17,20 +17,32 @@ export async function GET() {
       const imageType = imageUrl.includes('.webp') ? 'image/webp' :
                        imageUrl.includes('.png') ? 'image/png' : 'image/jpeg'
 
+      // Clean description by removing HTML tags and properly escaping
+      const cleanDescription = (post.excerpt || post.content?.substring(0, 200) || '')
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/&/g, '&amp;') // Escape ampersands
+        .replace(/</g, '&lt;') // Escape less than
+        .replace(/>/g, '&gt;') // Escape greater than
+        .trim()
+
+      // Estimate file size for enclosure (required attribute)
+      const estimatedLength = imageType === 'image/webp' ? '50000' :
+                             imageType === 'image/png' ? '100000' : '75000'
+
       return `
     <item>
       <title><![CDATA[${post.title}]]></title>
-      <description><![CDATA[${post.excerpt || post.content?.substring(0, 200) || ''}]]></description>
+      <description><![CDATA[${cleanDescription}]]></description>
       <link>${postUrl}</link>
       <guid isPermaLink="true">${postUrl}</guid>
       <pubDate>${new Date(post.createdAt).toUTCString()}</pubDate>
       <author>noreply@sharevault.in (ShareVault)</author>
       <category><![CDATA[${post.category || 'Blog'}]]></category>
       ${post.tags ? post.tags.map(tag => `<category><![CDATA[${tag}]]></category>`).join('\n      ') : ''}
-      <enclosure url="${imageUrl}" type="${imageType}"/>
+      <enclosure url="${imageUrl}" type="${imageType}" length="${estimatedLength}"/>
       <media:content url="${imageUrl}" type="${imageType}" medium="image" width="1200" height="630">
         <media:title><![CDATA[${post.title}]]></media:title>
-        <media:description><![CDATA[${post.excerpt || post.content?.substring(0, 200) || ''}]]></media:description>
+        <media:description><![CDATA[${cleanDescription}]]></media:description>
       </media:content>
     </item>`
     }).join('')
@@ -56,7 +68,7 @@ export async function GET() {
     <generator>ShareVault RSS Generator</generator>
     <image>
       <url>${getImageUrl('logo.png')}</url>
-      <title>ShareVault</title>
+      <title>ShareVault - Raw Motivation &amp; Brutal Honesty</title>
       <link>${siteUrl}</link>
       <width>144</width>
       <height>144</height>
