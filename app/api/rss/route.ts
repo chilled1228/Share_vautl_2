@@ -106,8 +106,7 @@ export async function GET() {
      xmlns:atom="http://www.w3.org/2005/Atom"
      xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
      xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
-     xmlns:media="http://search.yahoo.com/mrss/"
-     xmlns:pinterest="http://www.pinterest.com/dtd/rss-1.0/">
+     xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
     <title>ShareVault - Raw Motivation &amp; Brutal Honesty</title>
     <atom:link href="${siteUrl}/api/rss" rel="self" type="application/rss+xml"/>
@@ -133,7 +132,6 @@ export async function GET() {
     <category>Inspiration</category>
     <category>Mindset</category>
     <category>Self Improvement</category>
-    <pinterest:rich-pins>true</pinterest:rich-pins>
     ${rssItems}
   </channel>
 </rss>`
