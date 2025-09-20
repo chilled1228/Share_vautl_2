@@ -121,10 +121,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <p className="text-xl md:text-2xl font-bold mb-8 leading-relaxed text-balance">{post.excerpt}</p>
 
           {/* Featured Image */}
-          {post.imageUrl && (
+          {(post.featuredImage || post.imageUrl) && (
             <div className="mb-8 brutalist-border brutalist-shadow transform rotate-1">
               <img
-                src={post.imageUrl}
+                src={post.featuredImage || post.imageUrl}
                 alt={post.title}
                 className="w-full h-64 md:h-96 object-cover"
               />
@@ -262,6 +262,9 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       }
     }
 
+    // Check both featuredImage and imageUrl for Pinterest compatibility
+    const featuredImage = post.featuredImage || post.imageUrl || "/og-image.png"
+
     const metadata = generateSEO({
       title: post.title,
       description: post.excerpt,
@@ -271,7 +274,7 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
       section: post.category,
       tags: post.tags || [post.category.toLowerCase()],
       url: `/${slug}`,
-      image: post.imageUrl || "/og-image.png",
+      image: featuredImage,
     })
 
     PerformanceMonitor.endTimer(`generate-metadata-${slug}`)

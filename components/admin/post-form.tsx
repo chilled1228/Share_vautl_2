@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Save, X } from 'lucide-react'
+import URLImageExtractor from '@/components/URLImageExtractor'
 
 interface PostFormData {
   title: string
@@ -193,6 +194,13 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
                 placeholder="https://example.com/image.jpg"
               />
             </div>
+          </div>
+
+          <div className="space-y-4">
+            <URLImageExtractor
+              onImageSelect={(imageUrl) => handleInputChange('featuredImage', imageUrl)}
+              currentImageUrl={formData.featuredImage}
+            />
           </div>
 
           <div className="space-y-2">

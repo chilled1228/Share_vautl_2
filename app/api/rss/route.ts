@@ -53,9 +53,18 @@ export async function GET() {
 
     const rssItems = posts.map(post => {
       const postUrl = `${siteUrl}/${post.slug}`
-      const imageUrl = post.imageUrl ?
-        (post.imageUrl.startsWith('http') ? post.imageUrl : `${siteUrl}${post.imageUrl}`) :
-        getImageUrl('og-image-blog.jpg')
+
+      // Try multiple image sources for Pinterest compatibility
+      let imageUrl = post.featuredImage || post.imageUrl // Check both fields
+      if (!imageUrl) {
+        // Fallback to default image
+        imageUrl = getImageUrl('og-image-blog.jpg')
+      }
+
+      // Ensure image URL is absolute
+      if (!imageUrl.startsWith('http')) {
+        imageUrl = imageUrl.startsWith('/') ? `${siteUrl}${imageUrl}` : `${siteUrl}/${imageUrl}`
+      }
 
       // Get proper image type from URL extension
       const imageType = imageUrl.includes('.webp') ? 'image/webp' :
