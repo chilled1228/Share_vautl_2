@@ -25,6 +25,13 @@ export async function GET() {
         .replace(/>/g, '&gt;') // Escape greater than
         .trim()
 
+      // For media:description, use plain text without any HTML entities
+      const plainDescription = (post.excerpt || post.content?.substring(0, 200) || '')
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/&[^;]+;/g, '') // Remove all HTML entities
+        .replace(/[<>]/g, '') // Remove any remaining angle brackets
+        .trim()
+
       // Estimate file size for enclosure (required attribute)
       const estimatedLength = imageType === 'image/webp' ? '50000' :
                              imageType === 'image/png' ? '100000' : '75000'
@@ -42,7 +49,7 @@ export async function GET() {
       <enclosure url="${imageUrl}" type="${imageType}" length="${estimatedLength}"/>
       <media:content url="${imageUrl}" type="${imageType}" medium="image" width="1200" height="630">
         <media:title><![CDATA[${post.title}]]></media:title>
-        <media:description><![CDATA[${cleanDescription}]]></media:description>
+        <media:description><![CDATA[${plainDescription}]]></media:description>
       </media:content>
     </item>`
     }).join('')
