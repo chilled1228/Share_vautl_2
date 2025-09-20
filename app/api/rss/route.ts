@@ -1,10 +1,54 @@
-import { BlogService } from '@/lib/blog-service'
 import { getCanonicalUrl, getImageUrl } from '@/lib/seo-utils'
+
+// Dynamic imports for minimal bundle size
+const initFirebase = async () => {
+  const [{ initializeApp, getApps }, { getFirestore }, { collection, query, where, orderBy, limit, getDocs }] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/firestore/lite'),
+    import('firebase/firestore/lite')
+  ])
+
+  return { initializeApp, getApps, getFirestore, collection, query, where, orderBy, limit, getDocs }
+}
+
+// Lightweight Firebase config for RSS route only
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+}
 
 export async function GET() {
   try {
-    // Pinterest processes 200 pins/day and checks oldest first, so limit to recent posts
-    const posts = await BlogService.getPosts(200) // Optimal for Pinterest's daily limit
+    // Dynamically load Firebase for minimal initial bundle
+    const { initializeApp, getApps, getFirestore, collection, query, where, orderBy, limit, getDocs } = await initFirebase()
+
+    // Initialize Firebase Lite (only if not already initialized)
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+    const db = getFirestore(app)
+
+    // Get ALL published posts for Pinterest - no limit to ensure every post is available
+    // Pinterest will process posts starting from newest, so order by desc
+    const q = query(
+      collection(db, 'posts'),
+      where('published', '==', true),
+      orderBy('createdAt', 'desc')
+      // No limit - Pinterest needs access to ALL posts
+    )
+    const querySnapshot = await getDocs(q)
+    const posts = querySnapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+      }
+    })
+
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sharevault.in'
 
     const rssItems = posts.map(post => {
@@ -62,7 +106,8 @@ export async function GET() {
      xmlns:atom="http://www.w3.org/2005/Atom"
      xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
      xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
-     xmlns:media="http://search.yahoo.com/mrss/">
+     xmlns:media="http://search.yahoo.com/mrss/"
+     xmlns:pinterest="http://www.pinterest.com/dtd/rss-1.0/">
   <channel>
     <title>ShareVault - Raw Motivation &amp; Brutal Honesty</title>
     <atom:link href="${siteUrl}/api/rss" rel="self" type="application/rss+xml"/>
@@ -71,7 +116,7 @@ export async function GET() {
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <language>en-US</language>
     <sy:updatePeriod>hourly</sy:updatePeriod>
-    <sy:updateFrequency>1</sy:updateFrequency>
+    <sy:updateFrequency>6</sy:updateFrequency>
     <generator>ShareVault RSS Generator</generator>
     <image>
       <url>${getImageUrl('logo.png')}</url>
@@ -88,6 +133,7 @@ export async function GET() {
     <category>Inspiration</category>
     <category>Mindset</category>
     <category>Self Improvement</category>
+    <pinterest:rich-pins>true</pinterest:rich-pins>
     ${rssItems}
   </channel>
 </rss>`
@@ -95,8 +141,8 @@ export async function GET() {
     return new Response(rss, {
       status: 200,
       headers: {
-        'Content-Type': 'application/rss+xml; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
       },
     })
   } catch (error) {
@@ -105,4 +151,4 @@ export async function GET() {
   }
 }
 
-export const revalidate = 1800 // Revalidate every 30 minutes for faster Pinterest updates
+export const revalidate = 600 // Revalidate every 10 minutes for immediate Pinterest updates

@@ -149,8 +149,7 @@ const nextConfig = {
       '@radix-ui/react-toggle',
       '@radix-ui/react-toggle-group',
       '@radix-ui/react-tooltip',
-      'lucide-react',
-      'firebase'
+      'lucide-react'
     ],
 
     // Enable web vitals attribution for better debugging
@@ -163,12 +162,42 @@ const nextConfig = {
 
   // Webpack optimizations for maximum performance
   webpack: (config, { dev, isServer }) => {
+    // Performance optimizations for all builds
+    config.resolve = {
+      ...config.resolve,
+      fallback: {
+        ...config.resolve?.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        url: false,
+        zlib: false,
+        http: false,
+        https: false,
+        assert: false,
+        os: false,
+        path: false,
+      },
+    }
+
+    // Add performance hints
+    config.performance = {
+      hints: 'warning',
+      maxEntrypointSize: 400000, // 400kb
+      maxAssetSize: 300000, // 300kb
+    }
+
+    return config
+  },
+
+  // Backup webpack config (disabled)
+  webpack_disabled: (config, { dev, isServer }) => {
     // Production optimizations
     if (!dev && !isServer) {
       config.optimization = {
         ...config.optimization,
-        usedExports: true,
-        sideEffects: false,
         splitChunks: {
           chunks: 'all',
           minSize: 20000,

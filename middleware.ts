@@ -25,15 +25,9 @@ export function middleware(request: NextRequest) {
     response.headers.set('Vary', 'Accept-Encoding')
   }
 
-  // Handle API routes with shorter caching
-  if (pathname.startsWith('/api/')) {
-    if (pathname === '/api/rss') {
-      // RSS feed - cache for 1 hour
-      response.headers.set(
-        'Cache-Control',
-        'public, max-age=3600, stale-while-revalidate=300'
-      )
-    } else if (pathname.startsWith('/api/posts') || pathname.startsWith('/api/categories')) {
+  // Handle API routes with shorter caching (excluding RSS to reduce bundle size)
+  if (pathname.startsWith('/api/') && pathname !== '/api/rss') {
+    if (pathname.startsWith('/api/posts') || pathname.startsWith('/api/categories')) {
       // Posts and categories - cache for 5 minutes
       response.headers.set(
         'Cache-Control',
@@ -69,7 +63,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - api/rss (RSS feed to reduce bundle size)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/rss).*)',
   ],
 }
