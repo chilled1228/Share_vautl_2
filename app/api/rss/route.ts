@@ -45,7 +45,7 @@ export async function GET() {
      xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
      xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
-    <title>ShareVault - Raw Motivation & Brutal Honesty</title>
+    <title>ShareVault - Raw Motivation &amp; Brutal Honesty</title>
     <atom:link href="${siteUrl}/api/rss" rel="self" type="application/rss+xml"/>
     <link>${siteUrl}</link>
     <description>Unfiltered motivation and brutal honesty for personal growth. Powerful quotes with context, actionable insights, and raw truth for those who refuse to settle.</description>

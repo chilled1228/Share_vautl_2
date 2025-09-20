@@ -10,7 +10,6 @@ import { defaultSEO } from "@/lib/seo"
 import { getCanonicalUrl } from "@/lib/seo-utils"
 import DynamicFooter from "@/components/dynamic-footer"
 import WebVitals from "@/components/web-vitals"
-import { PerformanceMonitor } from "@/lib/performance"
 import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
 
@@ -41,13 +40,9 @@ export default function RootLayout({
         {/* Critical resource hints for performance */}
         <link rel="dns-prefetch" href="//shair-vault.firebaseapp.com" />
         <link rel="dns-prefetch" href="//www.gstatic.com" />
-        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
 
         <link rel="preconnect" href="https://shair-vault.firebaseapp.com" crossOrigin="" />
         <link rel="preconnect" href="https://www.gstatic.com" crossOrigin="" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
 
         {/* Preload critical Firebase Auth script */}
         <link
@@ -101,18 +96,6 @@ export default function RootLayout({
           <Suspense fallback={<LoadingSkeleton />}>{children}</Suspense>
         </AuthProvider>
         <Analytics />
-        <script dangerouslySetInnerHTML={{ __html: `
-          // Initialize performance monitoring
-          if (typeof window !== 'undefined') {
-            window.addEventListener('load', () => {
-              console.log('🚀 [Performance] Page fully loaded');
-              // Initialize Web Vitals
-              if ('PerformanceMonitor' in window) {
-                PerformanceMonitor.initWebVitals();
-              }
-            });
-          }
-        `}} />
       </body>
     </html>
   )

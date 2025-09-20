@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareVault - Offline</title>
+    <style>
+        :root {
+            --background: #FEFEFE;
+            --foreground: #1B1D1B;
+            --primary: #4B7A6D;
+            --secondary: #DEA486;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--background);
+            color: var(--foreground);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+            border: 4px solid var(--foreground);
+            box-shadow: 8px 8px 0px var(--foreground);
+            background: var(--background);
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            background: var(--primary);
+            color: var(--background);
+            padding: 1rem;
+            border: 4px solid var(--foreground);
+            box-shadow: 4px 4px 0px var(--foreground);
+            transform: rotate(-1deg);
+            display: inline-block;
+        }
+
+        p {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            color: var(--foreground);
+        }
+
+        .retry-btn {
+            background: var(--secondary);
+            color: var(--foreground);
+            border: 4px solid var(--foreground);
+            box-shadow: 4px 4px 0px var(--foreground);
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .retry-btn:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--foreground);
+        }
+
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 2rem;
+                padding: 0.75rem;
+            }
+
+            .container {
+                padding: 1.5rem;
+            }
+
+            p {
+                font-size: 1.125rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="offline-icon">📡</div>
+        <h1>OFFLINE</h1>
+        <p>YOU'RE CURRENTLY OFFLINE. CHECK YOUR CONNECTION AND TRY AGAIN.</p>
+        <button class="retry-btn" onclick="window.location.reload()">
+            TRY AGAIN
+        </button>
+    </div>
+
+    <script>
+        // Auto-retry when online
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+
+        // Show connection status
+        function updateConnectionStatus() {
+            if (navigator.onLine) {
+                window.location.reload();
+            }
+        }
+
+        // Check connection periodically
+        setInterval(updateConnectionStatus, 5000);
+    </script>
+</body>
+</html>

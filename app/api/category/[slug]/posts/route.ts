@@ -22,7 +22,7 @@ export async function GET(
     const posts = await BlogService.getPostsByCategoryWithPagination(category, offset, limit)
     const totalPosts = await BlogService.getCategoryPostsCount(category)
 
-    return Response.json({
+    const response = Response.json({
       posts,
       offset,
       limit,
@@ -30,6 +30,19 @@ export async function GET(
       category: category,
       slug: slug
     })
+
+    // Add cache headers with 5-minute TTL
+    response.headers.set(
+      'Cache-Control',
+      'public, max-age=300, stale-while-revalidate=60'
+    )
+    response.headers.set('Vary', 'Accept-Encoding')
+
+    // Add ETag for cache validation
+    const etag = `W/"category-${slug}-${offset}-${limit}-${totalPosts}"`
+    response.headers.set('ETag', etag)
+
+    return response
   } catch (error) {
     console.error('Error fetching category posts:', error)
     return Response.json(

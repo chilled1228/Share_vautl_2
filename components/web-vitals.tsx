@@ -2,93 +2,196 @@
 
 import { useEffect } from 'react'
 
+// Performance thresholds for scoring
+const PERFORMANCE_THRESHOLDS = {
+  LCP: { good: 2500, poor: 4000 },
+  FID: { good: 100, poor: 300 },
+  CLS: { good: 0.1, poor: 0.25 },
+  FCP: { good: 1800, poor: 3000 },
+  TTFB: { good: 800, poor: 1800 },
+  INP: { good: 200, poor: 500 }
+}
+
+function getPerformanceRating(metric: string, value: number): 'good' | 'needs-improvement' | 'poor' {
+  const threshold = PERFORMANCE_THRESHOLDS[metric as keyof typeof PERFORMANCE_THRESHOLDS]
+  if (!threshold) return 'good'
+
+  if (value <= threshold.good) return 'good'
+  if (value <= threshold.poor) return 'needs-improvement'
+  return 'poor'
+}
+
 export default function WebVitals() {
   useEffect(() => {
-    // Initialize Web Vitals monitoring
-    if (typeof window !== 'undefined') {
-      // Monitor LCP (Largest Contentful Paint)
-      if ('PerformanceObserver' in window) {
-        try {
-          const lcpObserver = new PerformanceObserver((list) => {
-            const entries = list.getEntries()
-            if (entries.length > 0) {
-              const lastEntry = entries[entries.length - 1]
-              console.log(`📊 [LCP] Largest Contentful Paint: ${lastEntry.startTime.toFixed(2)}ms`)
-            }
-          })
-          lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
-        } catch (e) {
-          console.warn('LCP monitoring not supported:', e)
-        }
+    if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return
 
-        // Monitor FID (First Input Delay)
-        try {
-          const fidObserver = new PerformanceObserver((list) => {
-            for (const entry of list.getEntries()) {
-              const fid = (entry as any).processingStart - entry.startTime
-              console.log(`📊 [FID] First Input Delay: ${fid.toFixed(2)}ms`)
-            }
-          })
-          fidObserver.observe({ entryTypes: ['first-input'] })
-        } catch (e) {
-          console.warn('FID monitoring not supported:', e)
-        }
+    let clsValue = 0
+    const performanceData: Record<string, number> = {}
 
-        // Monitor CLS (Cumulative Layout Shift)
-        try {
-          const clsObserver = new PerformanceObserver((list) => {
-            let cls = 0
-            for (const entry of list.getEntries()) {
-              if (!(entry as any).hadRecentInput) {
-                cls += (entry as any).value
-              }
-            }
-            console.log(`📊 [CLS] Cumulative Layout Shift: ${cls.toFixed(3)}`)
-          })
-          clsObserver.observe({ entryTypes: ['layout-shift'] })
-        } catch (e) {
-          console.warn('CLS monitoring not supported:', e)
-        }
+    // Monitor Core Web Vitals with proper attribution
+    const observePerformance = () => {
+      // LCP Observer with detailed information
+      try {
+        const lcpObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries()
+          const lastEntry = entries[entries.length - 1] as any
+          const value = lastEntry.startTime
+          const rating = getPerformanceRating('LCP', value)
 
-        // Monitor FCP (First Contentful Paint)
-        try {
-          const fcpObserver = new PerformanceObserver((list) => {
-            const entries = list.getEntries()
-            if (entries.length > 0) {
-              console.log(`📊 [FCP] First Contentful Paint: ${entries[0].startTime.toFixed(2)}ms`)
-            }
+          performanceData.LCP = value
+          console.log(`🎯 [LCP] ${value.toFixed(0)}ms (${rating})`, {
+            element: lastEntry.element?.tagName || 'unknown',
+            url: lastEntry.url || 'unknown'
           })
-          fcpObserver.observe({ entryTypes: ['paint'] })
-        } catch (e) {
-          console.warn('FCP monitoring not supported:', e)
-        }
 
-        // Monitor TTFB (Time to First Byte)
-        const navigationEntries = performance.getEntriesByType('navigation')
-        if (navigationEntries.length > 0) {
-          const navigationEntry = navigationEntries[0] as PerformanceNavigationTiming
-          const ttfb = navigationEntry.responseStart - navigationEntry.requestStart
-          console.log(`📊 [TTFB] Time to First Byte: ${ttfb.toFixed(2)}ms`)
-        }
+          // Store for potential analytics
+          if (typeof gtag !== 'undefined') {
+            gtag('event', 'web_vitals', {
+              event_category: 'performance',
+              event_label: 'LCP',
+              value: Math.round(value),
+              custom_map: { metric_rating: rating }
+            })
+          }
+        })
+        lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
+      } catch (e) {
+        console.warn('LCP monitoring failed:', e)
+      }
+
+      // FID/INP Observer
+      try {
+        const fidObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const value = (entry as any).processingStart - entry.startTime
+            const rating = getPerformanceRating('FID', value)
+
+            performanceData.FID = value
+            console.log(`👆 [FID] ${value.toFixed(0)}ms (${rating})`)
+          }
+        })
+        fidObserver.observe({ entryTypes: ['first-input'] })
+
+        // Also observe INP for newer browsers
+        const inpObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const value = (entry as any).processingStart - entry.startTime
+            const rating = getPerformanceRating('INP', value)
+
+            performanceData.INP = value
+            console.log(`🔄 [INP] ${value.toFixed(0)}ms (${rating})`)
+          }
+        })
+        inpObserver.observe({ entryTypes: ['event'] })
+      } catch (e) {
+        console.warn('FID/INP monitoring failed:', e)
+      }
+
+      // CLS Observer with session tracking
+      try {
+        const clsObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!(entry as any).hadRecentInput) {
+              clsValue += (entry as any).value
+              const rating = getPerformanceRating('CLS', clsValue)
+
+              performanceData.CLS = clsValue
+              console.log(`📐 [CLS] ${clsValue.toFixed(3)} (${rating})`)
+            }
+          }
+        })
+        clsObserver.observe({ entryTypes: ['layout-shift'] })
+      } catch (e) {
+        console.warn('CLS monitoring failed:', e)
+      }
+
+      // FCP Observer
+      try {
+        const fcpObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries()
+          for (const entry of entries) {
+            if (entry.name === 'first-contentful-paint') {
+              const value = entry.startTime
+              const rating = getPerformanceRating('FCP', value)
+
+              performanceData.FCP = value
+              console.log(`🎨 [FCP] ${value.toFixed(0)}ms (${rating})`)
+            }
+          }
+        })
+        fcpObserver.observe({ entryTypes: ['paint'] })
+      } catch (e) {
+        console.warn('FCP monitoring failed:', e)
+      }
+
+      // Resource timing and other performance metrics
+      try {
+        const resourceObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries()
+          let totalResources = 0
+          let totalSize = 0
+
+          for (const entry of entries) {
+            totalResources++
+            totalSize += (entry as any).transferSize || 0
+          }
+
+          if (totalResources > 0) {
+            console.log(`📦 [Resources] ${totalResources} resources, ${(totalSize / 1024).toFixed(0)}KB total`)
+          }
+        })
+        resourceObserver.observe({ entryTypes: ['resource'] })
+      } catch (e) {
+        console.warn('Resource monitoring failed:', e)
       }
     }
 
-    // Report performance metrics
-    const reportWebVitals = (metric: any) => {
-      console.log(`📈 [Web Vital] ${metric.name}: ${metric.value.toFixed(2)}ms`, {
-        id: metric.id,
-        value: metric.value,
-        rating: metric.rating
-      })
+    // Initialize monitoring
+    observePerformance()
+
+    // TTFB from Navigation API
+    const measureTTFB = () => {
+      const navigationEntries = performance.getEntriesByType('navigation')
+      if (navigationEntries.length > 0) {
+        const entry = navigationEntries[0] as PerformanceNavigationTiming
+        const ttfb = entry.responseStart - entry.requestStart
+        const rating = getPerformanceRating('TTFB', ttfb)
+
+        performanceData.TTFB = ttfb
+        console.log(`⚡ [TTFB] ${ttfb.toFixed(0)}ms (${rating})`)
+      }
     }
 
-    // Simulate web vitals reporting (in production, this would send to analytics)
-    if (typeof window !== 'undefined' && (window as any).webVitals) {
-      ;(window as any).webVitals.onCLS(reportWebVitals)
-      ;(window as any).webVitals.onFID(reportWebVitals)
-      ;(window as any).webVitals.onFCP(reportWebVitals)
-      ;(window as any).webVitals.onLCP(reportWebVitals)
-      ;(window as any).webVitals.onTTFB(reportWebVitals)
+    // Measure TTFB after navigation
+    if (document.readyState === 'complete') {
+      measureTTFB()
+    } else {
+      window.addEventListener('load', measureTTFB)
+    }
+
+    // Performance summary on page unload
+    const logPerformanceSummary = () => {
+      const metrics = Object.entries(performanceData)
+      if (metrics.length > 0) {
+        console.log('📊 Performance Summary:', performanceData)
+
+        // Calculate overall score (simplified)
+        const scores = metrics.map(([metric, value]) => {
+          const rating = getPerformanceRating(metric, value)
+          return rating === 'good' ? 100 : rating === 'needs-improvement' ? 60 : 25
+        })
+        const overallScore = scores.reduce((sum, score) => sum + score, 0) / scores.length
+
+        console.log(`🏆 Overall Performance Score: ${overallScore.toFixed(0)}/100`)
+      }
+    }
+
+    window.addEventListener('beforeunload', logPerformanceSummary)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('load', measureTTFB)
+      window.removeEventListener('beforeunload', logPerformanceSummary)
     }
   }, [])
 

@@ -12,11 +12,24 @@ export async function GET(request: NextRequest) {
     // Get posts with pagination
     const posts = await BlogService.getPostsWithPagination(offset, limit)
 
-    return Response.json({
+    const response = Response.json({
       posts,
       offset,
       limit
     })
+
+    // Add cache headers with 5-minute TTL and stale-while-revalidate
+    response.headers.set(
+      'Cache-Control',
+      'public, max-age=300, stale-while-revalidate=60'
+    )
+    response.headers.set('Vary', 'Accept-Encoding')
+
+    // Add ETag for cache validation
+    const etag = `W/"posts-${offset}-${limit}-${posts.length}"`
+    response.headers.set('ETag', etag)
+
+    return response
   } catch (error) {
     console.error('Error fetching posts:', error)
     return Response.json(
