@@ -46,6 +46,10 @@ export default function URLImageExtractor({ onImageSelect, currentImageUrl }: UR
       setImages(data.images || [])
       setFeaturedImage(data.featuredImage || null)
 
+      if (data.fromDatabase) {
+        console.log('Featured image loaded from database')
+      }
+
     } catch (err) {
       console.error('Error extracting images:', err)
       setError(err instanceof Error ? err.message : 'Failed to extract images')
@@ -93,7 +97,12 @@ export default function URLImageExtractor({ onImageSelect, currentImageUrl }: UR
       {featuredImage && (
         <Card className="brutalist-border">
           <CardHeader>
-            <CardTitle className="text-sm">Featured Image</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2">
+              Featured Image
+              <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                Database
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="relative group">

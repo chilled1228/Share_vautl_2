@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BlogService } from '@/lib/blog-service'
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sharevault.in'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +18,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
     }
 
+    let dbFeaturedImage: string | null = null
+    let dbImages: string[] = []
+
+    // Check if URL is from our own site
+    if (url.includes(siteUrl) || url.includes('sharevault.in')) {
+      // Extract slug from URL
+      const urlObj = new URL(url)
+      const pathParts = urlObj.pathname.split('/').filter(Boolean)
+      const slug = pathParts[pathParts.length - 1]
+
+      if (slug) {
+        try {
+          // Fetch post from database by slug
+          const post = await BlogService.getPostBySlug(slug)
+          if (post) {
+            // Get featured image from database
+            dbFeaturedImage = post.featuredImage || post.imageUrl || null
+
+            // Add database featured image to images array
+            if (dbFeaturedImage) {
+              dbImages = [dbFeaturedImage]
+            }
+          }
+        } catch (error) {
+          console.log('Could not fetch post from database:', error)
+        }
+      }
+    }
+
     // Fetch the HTML content from the URL
     const response = await fetch(url, {
       headers: {
@@ -29,7 +61,7 @@ export async function POST(request: NextRequest) {
     const html = await response.text()
 
     // Extract images from HTML
-    const images = extractImages(html, url)
+    const htmlImages = extractImages(html, url)
 
     // Extract OpenGraph image
     const ogImage = extractOpenGraphImage(html, url)
@@ -37,10 +69,14 @@ export async function POST(request: NextRequest) {
     // Extract Twitter Card image
     const twitterImage = extractTwitterCardImage(html, url)
 
+    // Combine database images with HTML images (prioritize database)
+    const allImages = [...dbImages, ...htmlImages.filter(img => !dbImages.includes(img))]
+
     return NextResponse.json({
       success: true,
-      images,
-      featuredImage: ogImage || twitterImage || images[0] || null
+      images: allImages,
+      featuredImage: dbFeaturedImage || ogImage || twitterImage || allImages[0] || null,
+      fromDatabase: !!dbFeaturedImage
     })
 
   } catch (error) {
