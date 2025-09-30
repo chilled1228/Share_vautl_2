@@ -125,7 +125,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <div className="mb-8 brutalist-border brutalist-shadow transform rotate-1">
               <img
                 src={post.featuredImage || post.imageUrl}
-                alt={post.title}
+                alt={`${post.title} - Motivational content from ShareVault about ${post.category.toLowerCase()}`}
+                title={post.title}
                 className="w-full h-64 md:h-96 object-cover"
               />
             </div>
@@ -228,15 +229,15 @@ export const revalidate = 3600 // Revalidate every hour
 export async function generateStaticParams() {
   PerformanceMonitor.startTimer('generate-static-params')
   try {
-    // Get all published posts to generate static params
-    const posts = await PerformanceMonitor.measureFirebaseOperation(
+    // Get only slugs to avoid 2MB cache limit
+    const slugs = await PerformanceMonitor.measureFirebaseOperation(
       'static-params-fetch',
-      () => BlogService.getPosts()
+      () => BlogService.getPostSlugsOnly()
     )
-    console.log(`✅ [generateStaticParams] Generated static params for ${posts.length} posts`)
+    console.log(`✅ [generateStaticParams] Generated static params for ${slugs.length} posts`)
     PerformanceMonitor.endTimer('generate-static-params')
-    return posts.map((post) => ({
-      slug: post.slug,
+    return slugs.map((item) => ({
+      slug: item.slug,
     }))
   } catch (error) {
     console.error('Error generating static params:', error)

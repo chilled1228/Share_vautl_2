@@ -27,6 +27,12 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   compiler: {
@@ -162,109 +168,6 @@ const nextConfig = {
 
   // Webpack optimizations for maximum performance
   webpack: (config, { dev, isServer }) => {
-    // Performance optimizations for all builds
-    config.resolve = {
-      ...config.resolve,
-      fallback: {
-        ...config.resolve?.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
-        stream: false,
-        url: false,
-        zlib: false,
-        http: false,
-        https: false,
-        assert: false,
-        os: false,
-        path: false,
-      },
-    }
-
-    // Add performance hints
-    config.performance = {
-      hints: 'warning',
-      maxEntrypointSize: 400000, // 400kb
-      maxAssetSize: 300000, // 300kb
-    }
-
-    return config
-  },
-
-  // Backup webpack config (disabled)
-  webpack_disabled: (config, { dev, isServer }) => {
-    // Production optimizations
-    if (!dev && !isServer) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          minSize: 20000,
-          maxSize: 244000,
-          maxAsyncRequests: 30,
-          maxInitialRequests: 30,
-          cacheGroups: {
-            // Critical frameworks chunk
-            framework: {
-              test: /[\\/]node_modules[\\/](react|react-dom|next)[\\/]/,
-              name: 'framework',
-              priority: 40,
-              enforce: true,
-              reuseExistingChunk: true,
-            },
-            // Firebase auth chunk (lazy loaded)
-            firebase: {
-              test: /[\\/]node_modules[\\/](firebase)[\\/]/,
-              name: 'firebase',
-              priority: 30,
-              chunks: 'async',
-              reuseExistingChunk: true,
-            },
-            // Radix UI components (lazy loaded)
-            radix: {
-              test: /[\\/]node_modules[\\/](@radix-ui)[\\/]/,
-              name: 'radix-ui',
-              priority: 25,
-              chunks: 'async',
-              reuseExistingChunk: true,
-            },
-            // Analytics and non-critical libs
-            analytics: {
-              test: /[\\/]node_modules[\\/](@vercel\/analytics|recharts)[\\/]/,
-              name: 'analytics',
-              priority: 22,
-              chunks: 'async',
-              reuseExistingChunk: true,
-            },
-            // Common vendor libraries
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendor',
-              priority: 20,
-              minChunks: 2,
-              reuseExistingChunk: true,
-            },
-            // Default chunk
-            default: {
-              priority: 10,
-              minChunks: 2,
-              reuseExistingChunk: true,
-            },
-          },
-        },
-        minimize: true,
-        concatenateModules: true,
-      }
-
-      // Configure for modern JavaScript with better tree shaking
-      config.target = ['web', 'es2020']
-
-      // Enable more aggressive dead code elimination
-      config.optimization.providedExports = true
-      config.optimization.innerGraph = true
-    }
-
     // Performance optimizations for all builds
     config.resolve = {
       ...config.resolve,

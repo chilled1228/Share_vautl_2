@@ -38,8 +38,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   try {
-    // Fetch all blog posts from Firebase
-    const posts = await BlogService.getPosts()
+    // Fetch posts with a reasonable limit to avoid cache issues
+    const posts = await BlogService.getPosts(100)
 
     const blogPages = posts.map((post) => ({
       url: `${baseUrl}/${post.slug}`, // Using clean URLs without /blog/ prefix

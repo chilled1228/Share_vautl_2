@@ -640,4 +640,26 @@ export class BlogService {
       throw error
     }
   }
+
+  // Lightweight method to get only slugs for generateStaticParams
+  // This avoids the 2MB cache limit by fetching minimal data
+  static getPostSlugsOnly = unstable_cache(
+    async (): Promise<Array<{ slug: string }>> => {
+      const q = query(
+        collection(db, 'posts'),
+        where('published', '==', true)
+      )
+      const querySnapshot = await getDocs(q)
+      const slugs = querySnapshot.docs.map(doc => ({
+        slug: doc.data().slug
+      }))
+      console.log(`✅ [BlogService.getPostSlugsOnly] Retrieved ${slugs.length} slugs for static params`)
+      return slugs
+    },
+    ['post-slugs-only'],
+    {
+      revalidate: 3600, // 1 hour
+      tags: ['posts', 'slugs']
+    }
+  )
 }
