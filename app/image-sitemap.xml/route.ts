@@ -15,8 +15,8 @@ export async function GET(): Promise<Response> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"
 
   try {
-    // Fetch posts with a reasonable limit to avoid cache issues
-    const posts = await BlogService.getPosts(100)
+    // Fetch all posts for complete image indexing
+    const posts = await BlogService.getPosts()
 
     // Create XML content for image sitemap
     const images = posts
