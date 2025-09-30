@@ -20,9 +20,9 @@ export async function GET(): Promise<Response> {
 
     // Create XML content for image sitemap
     const images = posts
-      .filter(post => post.featuredImage || post.imageUrl) // Only posts with images
+      .filter(post => post.imageUrl) // Only posts with images
       .map(post => {
-        const imageUrl = post.featuredImage || post.imageUrl
+        const imageUrl = post.imageUrl
         const postUrl = `${baseUrl}/${post.slug}`
 
         // Escape XML special characters in title and excerpt
