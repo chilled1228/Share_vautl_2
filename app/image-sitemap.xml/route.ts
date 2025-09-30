@@ -1,6 +1,16 @@
 import type { MetadataRoute } from "next"
 import { BlogService } from "@/lib/blog-service"
 
+// Helper function to escape XML special characters
+function escapeXml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
 export async function GET(): Promise<Response> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"
 
@@ -15,13 +25,17 @@ export async function GET(): Promise<Response> {
         const imageUrl = post.featuredImage || post.imageUrl
         const postUrl = `${baseUrl}/${post.slug}`
 
+        // Escape XML special characters in title and excerpt
+        const safeTitle = escapeXml(post.title || '')
+        const safeExcerpt = escapeXml(post.excerpt || '')
+
         return `
     <url>
       <loc>${postUrl}</loc>
       <image:image>
         <image:loc>${imageUrl}</image:loc>
-        <image:title>${post.title}</image:title>
-        <image:caption>${post.excerpt}</image:caption>
+        <image:title>${safeTitle}</image:title>
+        <image:caption>${safeExcerpt}</image:caption>
       </image:image>
     </url>`
       })
