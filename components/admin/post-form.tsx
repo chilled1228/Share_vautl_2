@@ -27,7 +27,7 @@ interface PostFormData {
 }
 
 interface PostFormProps {
-  initialData?: Partial<Omit<PostFormData, 'tags'> & { tags: string | string[] }>
+  initialData?: Partial<Omit<PostFormData, 'tags'> & { tags: string | string[], published?: boolean }>
   postId?: string
   isEditing?: boolean
 }
@@ -50,7 +50,7 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
     content: initialData?.content || '',
     excerpt: initialData?.excerpt || '',
     category: initialData?.category || '',
-    status: initialData?.status || 'draft',
+    status: initialData?.status || (initialData?.published ? 'published' : 'draft'),
     imageUrl: initialData?.imageUrl || '',
     tags: getInitialTags(initialData?.tags)
   })
