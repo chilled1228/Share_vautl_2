@@ -1,5 +1,6 @@
 import Navigation from "@/components/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowRight, Quote } from "lucide-react"
 import { BlogService } from "@/lib/blog-service"
 import BlogPostsSection from "@/components/blog-posts-section"
@@ -18,10 +19,13 @@ function getCategoryColor(index: number): string {
 }
 
 export default async function HomePage() {
-  // Fetch featured posts, initial blog posts and total count
-  const featuredPosts = await BlogService.getFeaturedPosts(3)
-  const initialPosts = await BlogService.getPosts(12)
-  const totalPosts = await BlogService.getTotalPostsCount()
+  // Fetch featured posts, initial blog posts and total count in parallel
+  const [featuredPosts, initialPosts, totalPosts] = await Promise.all([
+    BlogService.getFeaturedPosts(3),
+    BlogService.getPosts(12),
+    BlogService.getTotalPostsCount()
+  ])
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -84,11 +88,13 @@ export default async function HomePage() {
                 <Link key={post.id} href={`/${post.slug}`} className="group">
                   <article className="bg-card brutalist-border brutalist-shadow p-6 h-full hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-200">
                     {post.imageUrl && (
-                      <div className="mb-4 overflow-hidden">
-                        <img
+                      <div className="mb-4 overflow-hidden relative h-48">
+                        <Image
                           src={post.imageUrl}
                           alt={post.title}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-200"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         />
                       </div>
                     )}

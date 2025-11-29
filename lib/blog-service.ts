@@ -170,16 +170,20 @@ export class BlogService {
 
   static async getPostsWithPagination(offset: number, limitCount: number): Promise<BlogPost[]> {
     try {
-      // First get all posts to determine the starting point
-      const allPostsQuery = query(
+      // Optimize: Fetch only up to the needed documents instead of all
+      // Note: In a production app with many posts, cursor-based pagination (startAfter) would be better
+      // but requires maintaining state of the last document.
+      // For now, limit(offset + limitCount) is a significant improvement over fetching everything.
+      const q = query(
         collection(db, 'posts'),
         where('published', '==', true),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(offset + limitCount)
       )
-      const allPostsSnapshot = await getDocs(allPostsQuery)
+      const querySnapshot = await getDocs(q)
 
       // Get the posts we want (skip 'offset' number of documents)
-      const docsToReturn = allPostsSnapshot.docs.slice(offset, offset + limitCount)
+      const docsToReturn = querySnapshot.docs.slice(offset, offset + limitCount)
 
       return docsToReturn.map(doc => {
         const data = doc.data()
