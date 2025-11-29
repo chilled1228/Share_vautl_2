@@ -8,7 +8,7 @@ import AdminLayout from '@/components/admin/admin-layout'
 import DashboardStats from '@/components/admin/dashboard-stats'
 import RecentActivity from '@/components/admin/recent-activity'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Plus, FileText, Edit, Trash2 } from 'lucide-react'
+import { Loader2, Plus, FileText, Edit, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -44,7 +44,7 @@ function AdminDashboardContent() {
         const allPosts = postsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }))
+        } as any))
 
         // Get categories
         const categoriesSnapshot = await getDocs(collection(db, 'categories'))
@@ -53,7 +53,7 @@ function AdminDashboardContent() {
         const oneWeekAgo = new Date()
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
 
-        const recentPosts = allPosts.filter(post => {
+        const recentPosts = allPosts.filter((post: any) => {
           const postDate = post.createdAt?.toDate?.() || new Date(post.createdAt)
           return postDate >= oneWeekAgo
         })
@@ -65,14 +65,14 @@ function AdminDashboardContent() {
         const popularPosts = popularPostsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }))
+        } as any))
 
         const dashboardData = {
           totalPosts: allPosts.length,
           totalCategories: categoriesSnapshot.size,
           recentPosts: recentPosts.length,
           popularPosts,
-          recentActivity: recentPosts.slice(0, 10).map(post => ({
+          recentActivity: recentPosts.slice(0, 10).map((post: any) => ({
             id: post.id,
             title: post.title,
             createdAt: post.createdAt,
@@ -93,9 +93,16 @@ function AdminDashboardContent() {
     }
   }, [user])
 
+  const sanitizedUser = user ? {
+    uid: user.uid,
+    email: user.email || '',
+    displayName: user.displayName || undefined,
+    isAdmin: user.isAdmin
+  } : undefined
+
   if (loading) {
     return (
-      <AdminLayout user={user}>
+      <AdminLayout user={sanitizedUser}>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -105,7 +112,7 @@ function AdminDashboardContent() {
 
   if (!dashboardData) {
     return (
-      <AdminLayout user={user}>
+      <AdminLayout user={sanitizedUser}>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">No dashboard data available</p>
         </div>
@@ -114,16 +121,24 @@ function AdminDashboardContent() {
   }
 
   return (
-    <AdminLayout user={user}>
+    <AdminLayout user={sanitizedUser}>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <Link href="/admin/posts/create">
-            <Button className="bg-primary text-primary-foreground brutalist-border brutalist-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-              <Plus size={20} className="mr-2" />
-              New Post
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/admin/posts/bulk-upload">
+              <Button variant="outline" className="brutalist-border">
+                <Upload size={20} className="mr-2" />
+                Bulk Upload
+              </Button>
+            </Link>
+            <Link href="/admin/posts/create">
+              <Button className="bg-primary text-primary-foreground brutalist-border brutalist-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                <Plus size={20} className="mr-2" />
+                New Post
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <DashboardStats

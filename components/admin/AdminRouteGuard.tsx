@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -13,14 +13,21 @@ interface AdminRouteGuardProps {
 export default function AdminRouteGuard({ children }: AdminRouteGuardProps) {
   const { user } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
   const [isSeedPage, setIsSeedPage] = useState(false)
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      // Check if current path is seed page
-      if (typeof window !== 'undefined') {
-        setIsSeedPage(window.location.pathname === '/seed')
+      // Check if current path is seed page or login page
+      if (pathname) {
+        setIsSeedPage(pathname === '/seed')
+
+        // Allow access to login page without checks
+        if (pathname === '/admin/login') {
+          setIsLoading(false)
+          return
+        }
       }
 
       if (!user) {
@@ -48,7 +55,7 @@ export default function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     }
 
     checkAdminAccess()
-  }, [user, router])
+  }, [user, router, pathname])
 
   if (isLoading) {
     return (

@@ -39,3 +39,5 @@ firebase-debug.log
 # Misc
 *.swp
 *.swo
+.vercel
+.env*.local

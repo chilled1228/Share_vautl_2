@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { revalidateAfterPostChange } from '@/lib/blog-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,14 +22,12 @@ interface PostFormData {
   excerpt: string
   category: string
   status: 'draft' | 'published'
-  featuredImage: string
-  metaTitle: string
-  metaDescription: string
+  imageUrl: string
   tags: string
 }
 
 interface PostFormProps {
-  initialData?: Partial<PostFormData>
+  initialData?: Partial<Omit<PostFormData, 'tags'> & { tags: string | string[] }>
   postId?: string
   isEditing?: boolean
 }
@@ -38,16 +37,22 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [user, setUser] = useState<any>(null)
+
+  // Helper to process initial tags
+  const getInitialTags = (tags?: string | string[]) => {
+    if (!tags) return ''
+    if (Array.isArray(tags)) return tags.join(', ')
+    return tags
+  }
+
   const [formData, setFormData] = useState<PostFormData>({
     title: initialData?.title || '',
     content: initialData?.content || '',
     excerpt: initialData?.excerpt || '',
     category: initialData?.category || '',
     status: initialData?.status || 'draft',
-    featuredImage: initialData?.featuredImage || '',
-    metaTitle: initialData?.metaTitle || '',
-    metaDescription: initialData?.metaDescription || '',
-    tags: initialData?.tags || ''
+    imageUrl: initialData?.imageUrl || '',
+    tags: getInitialTags(initialData?.tags)
   })
 
   useEffect(() => {
@@ -97,6 +102,8 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
         slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
         published: formData.status === 'published',
         views: 0,
+        featured: false, // Default to false
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
@@ -108,6 +115,9 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
         // Create new post
         await addDoc(collection(db, 'posts'), postData)
       }
+
+      // Revalidate cache on server
+      await revalidateAfterPostChange(postData.slug, postData.category)
 
       router.push('/admin/posts')
     } catch (err) {
@@ -185,11 +195,11 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="featuredImage">Featured Image URL</Label>
+              <Label htmlFor="imageUrl">Featured Image URL</Label>
               <Input
-                id="featuredImage"
-                value={formData.featuredImage}
-                onChange={(e) => handleInputChange('featuredImage', e.target.value)}
+                id="imageUrl"
+                value={formData.imageUrl}
+                onChange={(e) => handleInputChange('imageUrl', e.target.value)}
                 className="brutalist-border"
                 placeholder="https://example.com/image.jpg"
               />
@@ -198,8 +208,8 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
 
           <div className="space-y-4">
             <URLImageExtractor
-              onImageSelect={(imageUrl) => handleInputChange('featuredImage', imageUrl)}
-              currentImageUrl={formData.featuredImage}
+              onImageSelect={(imageUrl) => handleInputChange('imageUrl', imageUrl)}
+              currentImageUrl={formData.imageUrl}
             />
           </div>
 
@@ -228,30 +238,7 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="metaTitle">Meta Title</Label>
-              <Input
-                id="metaTitle"
-                value={formData.metaTitle}
-                onChange={(e) => handleInputChange('metaTitle', e.target.value)}
-                className="brutalist-border"
-                placeholder="SEO title"
-              />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="metaDescription">Meta Description</Label>
-              <Textarea
-                id="metaDescription"
-                value={formData.metaDescription}
-                onChange={(e) => handleInputChange('metaDescription', e.target.value)}
-                rows={2}
-                className="brutalist-border"
-                placeholder="SEO description"
-              />
-            </div>
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="tags">Tags</Label>

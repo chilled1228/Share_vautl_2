@@ -92,30 +92,38 @@ export class BlogService {
     }
   }
 
-  static async getFeaturedPosts(limitCount = 3): Promise<BlogPost[]> {
-    const q = query(
-      collection(db, 'posts'),
-      where('featured', '==', true),
-      where('published', '==', true),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    )
-    const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data()
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-      } as BlogPost
-    })
-  }
+  static getFeaturedPosts = unstable_cache(
+    async (limitCount = 3): Promise<BlogPost[]> => {
+      const q = query(
+        collection(db, 'posts'),
+        where('featured', '==', true),
+        where('published', '==', true),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      )
+      const querySnapshot = await getDocs(q)
+      console.log(`✅ [BlogService.getFeaturedPosts] Retrieved ${querySnapshot.docs.length} featured posts`)
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+        } as BlogPost
+      })
+    },
+    ['featured-posts'],
+    {
+      revalidate: 3600, // 1 hour
+      tags: ['posts', 'featured-posts']
+    }
+  )
 
   static async getPostById(id: string): Promise<BlogPost | null> {
     const docRef = doc(db, 'posts', id)
     const docSnap = await getDoc(docRef)
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data()
       return {
@@ -219,7 +227,7 @@ export class BlogService {
     const storageRef = ref(storage, `sharevault/${userId}/${Date.now()}_${file.name}`)
     const snapshot = await uploadBytes(storageRef, file)
     const url = await getDownloadURL(snapshot.ref)
-    
+
     return {
       id: snapshot.metadata.fullPath,
       name: file.name,
@@ -273,83 +281,83 @@ export class BlogService {
   // Get related posts with caching (cached for 20 minutes)
   static getRelatedPostsOptimized = unstable_cache(
     async (category: string, currentSlug: string, limitCount: number = 3): Promise<BlogPost[]> => {
-    try {
-      // First try to get posts from the same category
-      const categoryQuery = query(
-        collection(db, 'posts'),
-        where('published', '==', true),
-        where('category', '==', category),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount + 1) // +1 to account for filtering out current post
-      )
+      try {
+        // First try to get posts from the same category
+        const categoryQuery = query(
+          collection(db, 'posts'),
+          where('published', '==', true),
+          where('category', '==', category),
+          orderBy('createdAt', 'desc'),
+          limit(limitCount + 1) // +1 to account for filtering out current post
+        )
 
-      const categorySnapshot = await getDocs(categoryQuery)
-      const categoryPosts = categorySnapshot.docs
-        .map(doc => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            slug: data.slug,
-            title: data.title,
-            excerpt: data.excerpt,
-            category: data.category,
-            imageUrl: data.imageUrl,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-          } as BlogPost
-        })
-        .filter(post => post.slug !== currentSlug)
-        .slice(0, limitCount)
+        const categorySnapshot = await getDocs(categoryQuery)
+        const categoryPosts = categorySnapshot.docs
+          .map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              slug: data.slug,
+              title: data.title,
+              excerpt: data.excerpt,
+              category: data.category,
+              imageUrl: data.imageUrl,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+            } as BlogPost
+          })
+          .filter(post => post.slug !== currentSlug)
+          .slice(0, limitCount)
 
-      console.log(`✅ [BlogService.getRelatedPostsOptimized] Found ${categoryPosts.length} related posts in category "${category}"`)
+        console.log(`✅ [BlogService.getRelatedPostsOptimized] Found ${categoryPosts.length} related posts in category "${category}"`)
 
-      // If we have enough posts from category, return them
-      if (categoryPosts.length >= 2) {
-        return categoryPosts.slice(0, 2)
-      }
-
-      // Otherwise, get some recent posts to fill the gap
-      const recentQuery = query(
-        collection(db, 'posts'),
-        where('published', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(5) // Get 5 to have options after filtering
-      )
-
-      const recentSnapshot = await getDocs(recentQuery)
-      const recentPosts = recentSnapshot.docs
-        .map(doc => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            slug: data.slug,
-            title: data.title,
-            excerpt: data.excerpt,
-            category: data.category,
-            imageUrl: data.imageUrl,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-          } as BlogPost
-        })
-        .filter(post => post.slug !== currentSlug)
-
-      // Combine category posts with recent posts, removing duplicates
-      const allRelatedPosts = [...categoryPosts]
-      const categoryPostSlugs = new Set(categoryPosts.map(p => p.slug))
-
-      for (const recentPost of recentPosts) {
-        if (!categoryPostSlugs.has(recentPost.slug) && allRelatedPosts.length < 2) {
-          allRelatedPosts.push(recentPost)
+        // If we have enough posts from category, return them
+        if (categoryPosts.length >= 2) {
+          return categoryPosts.slice(0, 2)
         }
+
+        // Otherwise, get some recent posts to fill the gap
+        const recentQuery = query(
+          collection(db, 'posts'),
+          where('published', '==', true),
+          orderBy('createdAt', 'desc'),
+          limit(5) // Get 5 to have options after filtering
+        )
+
+        const recentSnapshot = await getDocs(recentQuery)
+        const recentPosts = recentSnapshot.docs
+          .map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              slug: data.slug,
+              title: data.title,
+              excerpt: data.excerpt,
+              category: data.category,
+              imageUrl: data.imageUrl,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+            } as BlogPost
+          })
+          .filter(post => post.slug !== currentSlug)
+
+        // Combine category posts with recent posts, removing duplicates
+        const allRelatedPosts = [...categoryPosts]
+        const categoryPostSlugs = new Set(categoryPosts.map(p => p.slug))
+
+        for (const recentPost of recentPosts) {
+          if (!categoryPostSlugs.has(recentPost.slug) && allRelatedPosts.length < 2) {
+            allRelatedPosts.push(recentPost)
+          }
+        }
+
+        console.log(`✅ [BlogService.getRelatedPostsOptimized] Final result: ${allRelatedPosts.length} related posts`)
+        return allRelatedPosts.slice(0, 2)
+
+      } catch (error) {
+        console.error('Error in getRelatedPostsOptimized:', error)
+        return []
       }
-
-      console.log(`✅ [BlogService.getRelatedPostsOptimized] Final result: ${allRelatedPosts.length} related posts`)
-      return allRelatedPosts.slice(0, 2)
-
-    } catch (error) {
-      console.error('Error in getRelatedPostsOptimized:', error)
-      return []
-    }
     },
     ['related-posts'],
     {
@@ -379,7 +387,7 @@ export class BlogService {
 
   // Get categories with post counts (cached for 15 minutes)
   static getCategoriesWithCounts = unstable_cache(
-    async (): Promise<Array<{name: string, count: number, slug: string}>> => {
+    async (): Promise<Array<{ name: string, count: number, slug: string }>> => {
       const q = query(
         collection(db, 'posts'),
         where('published', '==', true)

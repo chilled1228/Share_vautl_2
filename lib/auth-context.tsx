@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { lazyAuthService, type AdminUser } from '@/lib/auth-service-lazy'
+import { authService, type AdminUser } from '@/lib/auth-service'
 
 interface AuthContextType {
   user: AdminUser | null
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set up auth state listener with lazy loading
-    const unsubscribe = lazyAuthService.onAuthStateChanged((authUser) => {
+    const unsubscribe = authService.onAuthStateChanged((authUser) => {
       setUser(authUser)
       setIsLoading(false)
     })
@@ -33,9 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      const authUser = await lazyAuthService.signInWithEmail(email, password)
+      const authUser = await authService.signInWithEmail(email, password)
       setUser(authUser)
     } catch (err: any) {
       setError(err.message)
@@ -48,9 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const googleLogin = async (): Promise<void> => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      const authUser = await lazyAuthService.signInWithGoogle()
+      const authUser = await authService.signInWithGoogle()
       setUser(authUser)
     } catch (err: any) {
       setError(err.message)
@@ -63,9 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      await lazyAuthService.signOut()
+      await authService.signOut()
       setUser(null)
     } catch (err: any) {
       setError(err.message)
@@ -78,9 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async (): Promise<void> => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      const refreshedUser = await lazyAuthService.getCurrentUser()
+      const refreshedUser = await authService.getCurrentUser()
       setUser(refreshedUser)
     } catch (err: any) {
       setError(err.message)

@@ -21,7 +21,7 @@ class LazyAuthService {
   private firebaseLoaded = false
   private loadingPromise: Promise<void> | null = null
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): LazyAuthService {
     if (!LazyAuthService.instance) {
@@ -48,7 +48,7 @@ class LazyAuthService {
           firestoreModule
         ] = await Promise.all([
           import('@/lib/firebase'),
-          import('@/lib/firebase'),
+          import('@/lib/firebase').then(m => ({ db: m.db })), // Reuse the same import promise ideally, but for now just fix the array destructuring if needed.
           import('firebase/auth'),
           import('firebase/firestore')
         ])

@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
 import { doc, getDoc, collection, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore'
+import { revalidateAfterPostChange } from '@/lib/blog-actions'
 import AdminLayout from '@/components/admin/admin-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
+import { Loader2, Plus, Search, Edit, Trash2, Eye, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 
@@ -23,6 +24,7 @@ interface Post {
   createdAt: any
   views: number
   authorId: string
+  slug: string
 }
 
 interface User {
@@ -55,8 +57,8 @@ export default function PostsPage() {
 
           const userData = {
             uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || undefined,
             isAdmin: true
           }
 
@@ -97,13 +99,16 @@ export default function PostsPage() {
     }
   }
 
-  const handleDelete = async (postId: string) => {
+  const handleDelete = async (post: Post) => {
     if (!confirm('Are you sure you want to delete this post?')) {
       return
     }
 
     try {
-      await deleteDoc(doc(db, 'posts', postId))
+      await deleteDoc(doc(db, 'posts', post.id))
+      // Revalidate cache on server
+      await revalidateAfterPostChange(post.slug, post.category)
+
       // Refresh posts list
       fetchPosts()
     } catch (error) {
@@ -133,12 +138,20 @@ export default function PostsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Posts</h1>
-          <Link href="/admin/posts/create">
-            <Button className="bg-primary text-primary-foreground brutalist-border brutalist-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-              <Plus size={20} className="mr-2" />
-              New Post
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/admin/posts/bulk-upload">
+              <Button variant="outline" className="brutalist-border">
+                <Upload size={20} className="mr-2" />
+                Bulk Upload
+              </Button>
+            </Link>
+            <Link href="/admin/posts/create">
+              <Button className="bg-primary text-primary-foreground brutalist-border brutalist-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                <Plus size={20} className="mr-2" />
+                New Post
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -209,7 +222,7 @@ export default function PostsPage() {
                           size="sm"
                           variant="ghost"
                           className="hover:bg-muted text-destructive"
-                          onClick={() => handleDelete(post.id)}
+                          onClick={() => handleDelete(post)}
                         >
                           <Trash2 size={16} />
                         </Button>
