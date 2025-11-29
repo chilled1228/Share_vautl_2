@@ -16,17 +16,46 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
     setMounted(true)
   }, [])
 
-  const copyQuote = async (text: string) => {
+  const copyQuote = async (encodedText: string, buttonElement?: HTMLElement) => {
+    const text = decodeURIComponent(encodedText)
     try {
       await navigator.clipboard.writeText(text)
-      showToast('Quote copied to clipboard!')
+      if (buttonElement) {
+        showButtonFeedback(buttonElement)
+      } else {
+        showToast('Quote copied to clipboard!')
+      }
     } catch (err) {
       console.error('Failed to copy text: ', err)
-      fallbackCopyTextToClipboard(text)
+      fallbackCopyTextToClipboard(text, buttonElement)
     }
   }
 
-  const shareQuote = async (text: string) => {
+  const showButtonFeedback = (button: HTMLElement) => {
+    const originalContent = button.innerHTML
+    const originalWidth = button.offsetWidth
+
+    // Lock width to prevent layout shift
+    button.style.width = `${originalWidth}px`
+    button.style.justifyContent = 'center'
+
+    button.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      COPIED!
+    `
+
+    setTimeout(() => {
+      button.innerHTML = originalContent
+      button.style.width = ''
+      button.style.justifyContent = ''
+    }, 2000)
+  }
+
+  const shareQuote = async (encodedText: string) => {
+    const text = decodeURIComponent(encodedText)
+    console.log('Sharing quote:', text)
     if (navigator.share) {
       try {
         await navigator.share({
@@ -43,7 +72,7 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
     }
   }
 
-  const fallbackCopyTextToClipboard = (text: string) => {
+  const fallbackCopyTextToClipboard = (text: string, buttonElement?: HTMLElement) => {
     const textArea = document.createElement('textarea')
     textArea.value = text
     textArea.style.top = '0'
@@ -56,7 +85,11 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
     try {
       const successful = document.execCommand('copy')
       if (successful) {
-        showToast('Quote copied to clipboard!')
+        if (buttonElement) {
+          showButtonFeedback(buttonElement)
+        } else {
+          showToast('Quote copied to clipboard!')
+        }
       } else {
         showToast('Failed to copy quote')
       }
@@ -86,10 +119,11 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
         const placeholder = document.getElementById(quote.id)
         if (placeholder && !placeholder.hasChildNodes()) {
           // Create quote actions HTML directly
+          const encodedText = encodeURIComponent(quote.text)
           const actionsHtml = `
             <div class="quote-actions-container mt-4 flex gap-3 justify-center">
               <button
-                onclick="window.quoteActions && window.quoteActions.copy('${quote.text.replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                onclick="window.quoteActions && window.quoteActions.copy('${encodedText}', this)"
                 class="bg-primary text-primary-foreground px-4 py-2 brutalist-border brutalist-shadow-sm btn-gradient-hover hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm touch-target inline-flex items-center gap-2"
                 aria-label="Copy quote"
               >
@@ -99,7 +133,7 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
                 COPY
               </button>
               <button
-                onclick="window.quoteActions && window.quoteActions.share('${quote.text.replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                onclick="window.quoteActions && window.quoteActions.share('${encodedText}')"
                 class="bg-secondary text-secondary-foreground px-4 py-2 brutalist-border brutalist-shadow-sm btn-gradient-hover hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-150 font-bold uppercase tracking-wide text-sm touch-target inline-flex items-center gap-2"
                 aria-label="Share quote"
               >
@@ -158,7 +192,7 @@ export default function QuoteActionsInjector({ quotes }: QuoteActionsInjectorPro
 declare global {
   interface Window {
     quoteActions?: {
-      copy: (text: string) => Promise<void>
+      copy: (text: string, buttonElement?: HTMLElement) => Promise<void>
       share: (text: string) => Promise<void>
       showToast: (message: string) => void
     }
