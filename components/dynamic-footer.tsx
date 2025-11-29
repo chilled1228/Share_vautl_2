@@ -157,7 +157,7 @@ export default function DynamicFooter() {
         {/* Bottom Bar */}
         <div className="border-t-4 border-background mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-lg font-bold uppercase tracking-wide mb-4 md:mb-0">
-            © 2024 SHAREVAULT. ALL RIGHTS RESERVED.
+            © 2025 SHAREVAULT. ALL RIGHTS RESERVED.
           </p>
           <div className="flex space-x-6">
             <Link
@@ -171,6 +171,12 @@ export default function DynamicFooter() {
               className="text-lg font-bold hover:text-secondary transition-colors uppercase tracking-wide"
             >
               TERMS
+            </Link>
+            <Link
+              href="/disclaimer"
+              className="text-lg font-bold hover:text-primary transition-colors uppercase tracking-wide"
+            >
+              DISCLAIMER
             </Link>
           </div>
         </div>

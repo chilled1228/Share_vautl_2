@@ -4,11 +4,9 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
-import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { WebsiteStructuredData, OrganizationStructuredData } from "@/components/structured-data"
 import { defaultSEO } from "@/lib/seo"
 import { getCanonicalUrl } from "@/lib/seo-utils"
-import DynamicFooter from "@/components/dynamic-footer"
 import WebVitals from "@/components/web-vitals"
 import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
@@ -94,7 +92,7 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <WebVitals />
         <AuthProvider>
-          <Suspense fallback={<LoadingSkeleton />}>{children}</Suspense>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-2xl font-black">LOADING...</div></div>}>{children}</Suspense>
         </AuthProvider>
         <Analytics />
       </body>

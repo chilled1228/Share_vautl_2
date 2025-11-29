@@ -22,7 +22,12 @@ export async function GET(): Promise<Response> {
     const images = posts
       .filter(post => post.imageUrl) // Only posts with images
       .map(post => {
-        const imageUrl = post.imageUrl
+        // Ensure image URL is absolute
+        let imageUrl = post.imageUrl
+        if (imageUrl && !imageUrl.startsWith('http')) {
+          imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+        }
+
         const postUrl = `${baseUrl}/${post.slug}`
 
         // Escape XML special characters in title and excerpt

@@ -9,6 +9,7 @@ export interface BlogPost {
   featured: boolean
   published: boolean
   imageUrl?: string
+  featuredImage?: string
   authorId: string
   author?: string
   createdAt: Date

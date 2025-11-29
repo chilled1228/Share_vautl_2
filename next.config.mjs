@@ -111,13 +111,13 @@ const nextConfig = {
           }
         ],
       },
-      // Preload critical resources
+      // Preload critical resources and add preconnect hints
       {
         source: '/',
         headers: [
           {
             key: 'Link',
-            value: '</sw.js>; rel=preload; as=script'
+            value: '<https://firebasestorage.googleapis.com>; rel=preconnect, <https://pub-141831e61e69445289222976a15b6fb3.r2.dev>; rel=preconnect'
           }
         ],
       },

@@ -339,7 +339,7 @@
   }
 
   .prose img {
-    @apply w-full h-auto border-4 border-border my-6;
+    @apply w-full h-auto max-h-[500px] object-contain border-4 border-border my-6;
     box-shadow: 8px 8px 0px oklch(0.1 0 0);
   }
 

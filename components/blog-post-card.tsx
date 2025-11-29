@@ -18,21 +18,18 @@ function getCategoryColor(index: number): string {
 const BlogPostCard = memo(function BlogPostCard({ post, index }: BlogPostCardProps) {
   return (
     <article
-      className={`bg-card brutalist-border brutalist-shadow transform ${
-        index % 2 === 0 ? "rotate-1" : "-rotate-1"
-      } hover:rotate-0 transition-transform duration-300`}
+      className={`bg-card brutalist-border brutalist-shadow transform ${index % 2 === 0 ? "rotate-1" : "-rotate-1"
+        } hover:rotate-0 transition-transform duration-300`}
     >
       {post.imageUrl ? (
-        <div className="h-48 overflow-hidden">
+        <div className="relative h-48 overflow-hidden">
           <Image
             src={post.imageUrl}
             alt={post.title}
-            width={400}
-            height={192}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
             loading="lazy"
-            placeholder="blur"
-            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDQwMCAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMTkyIiBmaWxsPSIjRjVGNUY1Ii8+Cjwvc3ZnPgo="
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
           />
         </div>
       ) : (

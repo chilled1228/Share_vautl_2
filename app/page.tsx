@@ -5,6 +5,9 @@ import { ArrowRight, Quote } from "lucide-react"
 import { BlogService } from "@/lib/blog-service"
 import BlogPostsSection from "@/components/blog-posts-section"
 import dynamic from "next/dynamic"
+import { Suspense } from "react"
+import { FeaturedPostsSkeleton } from "@/components/skeletons/featured-posts-skeleton"
+import { BlogPostsSkeleton } from "@/components/skeletons/blog-posts-skeleton"
 
 // Lazy load footer since it's below the fold
 const DynamicFooter = dynamic(() => import("@/components/dynamic-footer"), {
@@ -19,10 +22,10 @@ function getCategoryColor(index: number): string {
 }
 
 export default async function HomePage() {
-  // Fetch featured posts, initial blog posts and total count in parallel
+  // Fetch data in parallel for optimal performance
   const [featuredPosts, initialPosts, totalPosts] = await Promise.all([
     BlogService.getFeaturedPosts(3),
-    BlogService.getPosts(12),
+    BlogService.getPosts(8), // Reduced from 12 to 8 for faster initial load
     BlogService.getTotalPostsCount()
   ])
 
@@ -93,6 +96,7 @@ export default async function HomePage() {
                           src={post.imageUrl}
                           alt={post.title}
                           fill
+                          priority={index === 0} // Priority for first featured post
                           className="object-cover group-hover:scale-105 transition-transform duration-200"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         />
