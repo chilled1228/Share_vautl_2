@@ -28,7 +28,7 @@ export default function TermsPage() {
                         <h3>1. Introduction</h3>
                         <p>
                             Welcome to SHAREVAULT! These terms and conditions outline the rules and regulations for the use of
-                            SHAREVAULT's Website, located at https://sharevault.com.
+                            SHAREVAULT's Website, located at https://sharevault.in.
                         </p>
 
                         <p>

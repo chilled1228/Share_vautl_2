@@ -27,7 +27,7 @@ export default function DisclaimerPage() {
 
                         <h3>General Disclaimer</h3>
                         <p>
-                            The information provided by SHAREVAULT ("we," "us," or "our") on https://sharevault.com (the "Site") is
+                            The information provided by SHAREVAULT ("we," "us," or "our") on https://sharevault.in (the "Site") is
                             for general informational purposes only. All information on the Site is provided in good faith, however we
                             make no representation or warranty of any kind, express or implied, regarding the accuracy, adequacy,
                             validity, reliability, availability, or completeness of any information on the Site.

@@ -26,7 +26,7 @@ export default function PrivacyPage() {
                         <p className="lead font-bold text-xl">Last updated: {new Date().toLocaleDateString()}</p>
 
                         <p>
-                            At SHAREVAULT, accessible from https://sharevault.com, one of our main priorities is the privacy of our
+                            At SHAREVAULT, accessible from https://sharevault.in, one of our main priorities is the privacy of our
                             visitors. This Privacy Policy document contains types of information that is collected and recorded by
                             SHAREVAULT and how we use it.
                         </p>
