@@ -39,6 +39,18 @@ export default function DisclaimerPage() {
                             and your reliance on any information on the site is solely at your own risk.
                         </p>
 
+                        <h3>AI-Generated Content Disclaimer</h3>
+                        <p>
+                            Please be aware that images featured on SHAREVAULT are generated using artificial intelligence (<span className="bg-accent text-accent-foreground px-2 py-1 font-black">AI</span>) technology.
+                            These <span className="bg-accent text-accent-foreground px-2 py-1 font-black">AI</span>-generated images are created for illustrative and aesthetic purposes to enhance your browsing experience.
+                        </p>
+
+                        <p>
+                            Additionally, quotes displayed on the Site are a combination of hand-picked selections and <span className="bg-accent text-accent-foreground px-2 py-1 font-black">AI</span>-generated content.
+                            While we strive to provide meaningful and inspiring quotes, some are curated by our team while others are
+                            generated using <span className="bg-accent text-accent-foreground px-2 py-1 font-black">AI</span> technology. We make no guarantee regarding the originality or attribution of <span className="bg-accent text-accent-foreground px-2 py-1 font-black">AI</span>-generated quotes.
+                        </p>
+
                         <h3>External Links Disclaimer</h3>
                         <p>
                             The Site may contain (or you may be sent through the Site) links to other websites or content belonging to
