@@ -69,6 +69,14 @@ export default function RootLayout({
         <meta name="theme-color" content="#1a0b2e" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="google-site-verification" content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION} />
+        <meta name="google-adsense-account" content="ca-pub-7803867089582138" />
+
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7803867089582138"
+          crossOrigin="anonymous"
+        />
 
         {/* Critical CSS inline for above-the-fold content */}
         <style dangerouslySetInnerHTML={{

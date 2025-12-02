@@ -1,0 +1,9 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Allow ads.txt for AdSense verification
+Allow: /ads.txt
+
+# Sitemap location
+Sitemap: https://www.sharevault.in/sitemap.xml

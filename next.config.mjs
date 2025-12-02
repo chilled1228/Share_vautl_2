@@ -85,6 +85,33 @@ const nextConfig = {
           },
         ],
       },
+      // Serve ads.txt and robots.txt with proper headers
+      {
+        source: '/ads.txt',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400', // 24 hours
+          },
+        ],
+      },
+      {
+        source: '/robots.txt',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400', // 24 hours
+          },
+        ],
+      },
       // Security and performance headers for all routes
       {
         source: '/(.*)',
