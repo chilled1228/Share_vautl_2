@@ -11,9 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Plus, Search, Edit, Trash2, Eye, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
+import { useToast } from '@/hooks/use-toast'
+import { BlogService } from '@/lib/blog-service'
 
 interface Post {
   id: string
@@ -39,7 +42,10 @@ export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [user, setUser] = useState<User | null>(null)
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -96,6 +102,11 @@ export default function PostsPage() {
       setPosts(postsData)
     } catch (error) {
       console.error('Posts fetch error:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch posts',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -109,10 +120,113 @@ export default function PostsPage() {
       // Revalidate cache on server
       await revalidateAfterPostChange(post.slug, post.category)
 
+      toast({
+        title: 'Success',
+        description: 'Post deleted successfully'
+      })
+
       // Refresh posts list
       fetchPosts()
     } catch (error) {
       console.error('Delete post error:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete post',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedPosts.size === 0) {
+      toast({
+        title: 'No Selection',
+        description: 'Please select posts to delete',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedPosts.size} post${selectedPosts.size !== 1 ? 's' : ''}? This action cannot be undone.`
+
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      const postIds = Array.from(selectedPosts)
+
+      // Get post details for cache revalidation
+      const postsToDelete = posts.filter(p => postIds.includes(p.id))
+
+      console.log(`Starting bulk delete of ${postIds.length} posts...`)
+
+      // Delete posts using bulk delete service
+      await BlogService.bulkDeletePosts(postIds)
+
+      console.log(`Successfully deleted ${postIds.length} posts from Firestore`)
+
+      // Batch revalidate cache for deleted posts
+      try {
+        await Promise.all(
+          postsToDelete.map(post =>
+            revalidateAfterPostChange(post.slug, post.category).catch(err => {
+              console.error(`Failed to revalidate ${post.slug}:`, err)
+              // Don't fail if revalidation fails
+              return Promise.resolve()
+            })
+          )
+        )
+        console.log('Cache revalidation completed')
+      } catch (revalidationError) {
+        console.error('Batch revalidation error:', revalidationError)
+        // Continue even if revalidation fails
+      }
+
+      toast({
+        title: 'Success',
+        description: `Successfully deleted ${selectedPosts.size} post${selectedPosts.size !== 1 ? 's' : ''}`
+      })
+
+      // Clear selection and refresh
+      setSelectedPosts(new Set())
+      await fetchPosts()
+    } catch (error) {
+      console.error('Bulk delete error:', error)
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+      toast({
+        title: 'Delete Failed',
+        description: `Error: ${errorMessage}. Please refresh and try again.`,
+        variant: 'destructive'
+      })
+
+      // Refresh to show current state
+      setSelectedPosts(new Set())
+      await fetchPosts()
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const togglePostSelection = (postId: string) => {
+    const newSelection = new Set(selectedPosts)
+    if (newSelection.has(postId)) {
+      newSelection.delete(postId)
+    } else {
+      newSelection.add(postId)
+    }
+    setSelectedPosts(newSelection)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedPosts.size === filteredPosts.length) {
+      setSelectedPosts(new Set())
+    } else {
+      setSelectedPosts(new Set(filteredPosts.map(p => p.id)))
     }
   }
 
@@ -120,6 +234,9 @@ export default function PostsPage() {
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     post.category.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const allSelected = filteredPosts.length > 0 && selectedPosts.size === filteredPosts.length
+  const someSelected = selectedPosts.size > 0 && selectedPosts.size < filteredPosts.length
 
   if (loading) {
     return (
@@ -165,11 +282,45 @@ export default function PostsPage() {
               className="pl-10 brutalist-border"
             />
           </div>
+          {selectedPosts.size > 0 && (
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="brutalist-border"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={20} className="mr-2" />
+                  Delete Selected ({selectedPosts.size})
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         <Card className="brutalist-border brutalist-shadow">
           <CardHeader>
-            <CardTitle>All Posts</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>All Posts</CardTitle>
+              {filteredPosts.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={toggleSelectAll}
+                    className={someSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Select All ({filteredPosts.length})
+                  </span>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -187,25 +338,32 @@ export default function PostsPage() {
                 filteredPosts.map((post) => (
                   <div key={post.id} className="p-4 border border-border rounded-lg">
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-foreground">{post.title}</h3>
-                          <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
-                            {post.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                          {post.excerpt}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>Category: {post.category}</span>
-                          <span>•</span>
-                          <span>{formatDistanceToNow(post.createdAt?.toDate?.() || new Date(post.createdAt), { addSuffix: true })}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Eye size={14} />
-                            {post.views} views
-                          </span>
+                      <div className="flex items-start gap-3 flex-1">
+                        <Checkbox
+                          checked={selectedPosts.has(post.id)}
+                          onCheckedChange={() => togglePostSelection(post.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-foreground">{post.title}</h3>
+                            <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
+                              {post.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                            {post.excerpt}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Category: {post.category}</span>
+                            <span>•</span>
+                            <span>{formatDistanceToNow(post.createdAt?.toDate?.() || new Date(post.createdAt), { addSuffix: true })}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Eye size={14} />
+                              {post.views} views
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
