@@ -153,6 +153,12 @@ const nextConfig = {
 
   // Performance optimizations
   experimental: {
+    // Configure stale times for better caching
+    staleTimes: {
+      dynamic: 30,        // 30 seconds for dynamic routes
+      static: 180,        // 3 minutes for static routes
+    },
+
     // Optimize package imports for better tree shaking
     optimizePackageImports: [
       '@radix-ui/react-accordion',

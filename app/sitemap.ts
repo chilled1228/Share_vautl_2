@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next"
 import { BlogService } from "@/lib/blog-service"
 
+// Cache sitemap for 24 hours
+export const revalidate = 86400
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sharevault.in"
 
@@ -44,8 +47,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   try {
-    // Fetch posts with a reasonable limit to avoid cache issues
-    const posts = await BlogService.getPosts(100)
+    // Limit to 1000 most recent posts for sitemap
+    // Google recommends max 50,000 URLs per sitemap
+    const posts = await BlogService.getPosts(1000)
 
     const blogPages = posts.map((post) => ({
       url: `${baseUrl}/${post.slug}`, // Using clean URLs without /blog/ prefix

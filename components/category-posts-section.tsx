@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import NextImage from 'next/image'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { BlogPost } from '@/types/blog'
 
@@ -81,16 +82,17 @@ export default function CategoryPostsSection({
               {posts.map((post, index) => (
                 <article
                   key={post.id}
-                  className={`bg-card brutalist-border brutalist-shadow transform ${
-                    index % 2 === 0 ? "rotate-1" : "-rotate-1"
-                  } hover:rotate-0 transition-transform duration-300`}
+                  className={`bg-card brutalist-border brutalist-shadow transform ${index % 2 === 0 ? "rotate-1" : "-rotate-1"
+                    } hover:rotate-0 transition-transform duration-300`}
                 >
                   {post.imageUrl ? (
-                    <div className="h-48 overflow-hidden">
-                      <img
+                    <div className="h-48 overflow-hidden relative">
+                      <NextImage
                         src={post.imageUrl}
                         alt={post.title}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       />
                     </div>
                   ) : (

@@ -52,8 +52,8 @@ export class BlogService {
     },
     ['blog-posts'],
     {
-      revalidate: 3600, // 1 hour (increased from 10 minutes)
-      tags: ['posts']
+      revalidate: 7200, // 2 hours (increased from 3600)
+      tags: ['posts', 'all-posts']
     }
   )
 
@@ -115,7 +115,7 @@ export class BlogService {
     },
     ['featured-posts'],
     {
-      revalidate: 3600, // 1 hour
+      revalidate: 7200, // 2 hours (increased from 3600)
       tags: ['posts', 'featured-posts']
     }
   )
@@ -163,7 +163,7 @@ export class BlogService {
     },
     ['post-by-slug'],
     {
-      revalidate: 7200, // 2 hours (increased from 30 minutes)
+      revalidate: 21600, // 6 hours (increased from 7200)
       tags: ['posts', 'single-post']
     }
   )
@@ -365,7 +365,7 @@ export class BlogService {
     },
     ['related-posts'],
     {
-      revalidate: 3600, // 1 hour (increased from 20 minutes)
+      revalidate: 21600, // 6 hours (increased from 3600)
       tags: ['posts', 'related-posts']
     }
   )
@@ -418,8 +418,8 @@ export class BlogService {
     },
     ['categories-with-counts'],
     {
-      revalidate: 900, // 15 minutes
-      tags: ['categories']
+      revalidate: 3600, // 1 hour (increased from 900)
+      tags: ['categories', 'posts']
     }
   )
 
@@ -462,7 +462,7 @@ export class BlogService {
     },
     ['category-posts-pagination'],
     {
-      revalidate: 1800, // 30 minutes
+      revalidate: 7200, // 2 hours (increased from 1800)
       tags: ['posts', 'category-posts']
     }
   )
@@ -487,7 +487,7 @@ export class BlogService {
     },
     ['category-posts-count'],
     {
-      revalidate: 1800, // 30 minutes
+      revalidate: 7200, // 2 hours (increased from 1800)
       tags: ['posts', 'category-counts']
     }
   )
@@ -670,7 +670,7 @@ export class BlogService {
     },
     ['post-slugs-only'],
     {
-      revalidate: 3600, // 1 hour
+      revalidate: 21600, // 6 hours (increased from 3600)
       tags: ['posts', 'slugs']
     }
   )

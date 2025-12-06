@@ -13,7 +13,7 @@ interface CategoryPageProps {
 }
 
 // Category motivational quotes
-const categoryQuotes: Record<string, {quote: string, author: string}> = {
+const categoryQuotes: Record<string, { quote: string, author: string }> = {
   motivation: {
     quote: "MOTIVATION IS WHAT GETS YOU STARTED. HABIT IS WHAT KEEPS YOU GOING.",
     author: "JIM RYUN"
@@ -158,6 +158,12 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     notFound()
   }
 }
+
+// Enable ISR with 1-hour revalidation for category pages
+export const revalidate = 3600
+
+// Allow dynamic params for new categories
+export const dynamicParams = true
 
 export async function generateStaticParams() {
   try {

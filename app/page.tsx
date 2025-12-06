@@ -8,6 +8,7 @@ import dynamic from "next/dynamic"
 import { Suspense } from "react"
 import { FeaturedPostsSkeleton } from "@/components/skeletons/featured-posts-skeleton"
 import { BlogPostsSkeleton } from "@/components/skeletons/blog-posts-skeleton"
+import { generateSEO } from "@/lib/seo"
 
 // Lazy load footer since it's below the fold
 const DynamicFooter = dynamic(() => import("@/components/dynamic-footer"), {
@@ -133,4 +134,17 @@ export default async function HomePage() {
       <DynamicFooter />
     </div>
   )
+}
+
+// Enable ISR with 30-minute revalidation for homepage
+export const revalidate = 1800
+
+// Generate metadata for SEO
+export async function generateMetadata() {
+  return generateSEO({
+    title: "ShareVault - Raw Motivation & Brutal Honesty",
+    description: "Unfiltered inspiration for those who refuse to settle. Transform your mindset with powerful motivational content.",
+    keywords: ["motivation", "inspiration", "personal growth", "mindset", "success"],
+    url: "/",
+  })
 }

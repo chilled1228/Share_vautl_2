@@ -7,3 +7,4 @@ Allow: /ads.txt
 
 # Sitemap location
 Sitemap: https://www.sharevault.in/sitemap.xml
+Sitemap: https://www.sharevault.in/imagesitemap.xml

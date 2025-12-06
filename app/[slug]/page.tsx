@@ -3,6 +3,7 @@ import Footer from "@/components/footer"
 import QuoteCard from "@/components/quote-card"
 import ShareButtons from "@/components/share-buttons"
 import { ArticleStructuredData } from "@/components/structured-data"
+import { ImageObjectSchema } from "@/components/structured-data/image-object-schema"
 import BreadcrumbSchema from "@/components/structured-data/breadcrumb-schema"
 import PersonSchema from "@/components/structured-data/person-schema"
 import QuoteActionsInjector from "@/components/quote-actions-injector"
@@ -12,6 +13,7 @@ import { parseContentServer } from "@/lib/content-processor"
 import { PerformanceMonitor } from "@/lib/performance"
 import { BlogPost } from "@/types/blog"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import { notFound } from "next/navigation"
 
@@ -71,6 +73,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     () => BlogService.getRelatedPostsOptimized(post.category, slug, 3)
   )
 
+  // Get featured image for schema
+  const featuredImageUrl = post.featuredImage || post.imageUrl || '/og-image.png'
+
   return (
     <div className="min-h-screen bg-background">
       <ArticleStructuredData
@@ -80,6 +85,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         publishedTime={toISOStringSafe(post.createdAt)}
         url={`/${slug}`}
         category={post.category}
+        image={featuredImageUrl}
+      />
+      <ImageObjectSchema
+        imageUrl={featuredImageUrl}
+        title={post.title}
+        description={post.excerpt}
+        width={1200}
+        height={630}
+        author={post.author || "SHAREVAULT TEAM"}
+        datePublished={toISOStringSafe(post.createdAt)}
       />
       <BreadcrumbSchema
         items={[
@@ -122,12 +137,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           {/* Featured Image */}
           {(post.featuredImage || post.imageUrl) && (
-            <div className="mb-8 brutalist-border brutalist-shadow transform rotate-1">
-              <img
-                src={post.featuredImage || post.imageUrl}
+            <div className="mb-8 brutalist-border brutalist-shadow transform rotate-1 relative w-full" style={{ aspectRatio: '16/9' }}>
+              <Image
+                src={post.featuredImage || post.imageUrl || '/og-image.png'}
                 alt={`${post.title} - Motivational content from ShareVault about ${post.category.toLowerCase()}`}
                 title={post.title}
-                className="w-full h-64 md:h-96 object-cover"
+                fill
+                className="object-cover"
+                priority
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                quality={90}
               />
             </div>
           )}
@@ -223,20 +242,25 @@ function RelatedPostsGrid({ posts }: { posts: BlogPost[] }) {
   )
 }
 
-// Enable ISR for faster performance
-export const revalidate = 3600 // Revalidate every hour
+// Enable ISR for faster performance - Extended to 6 hours
+export const revalidate = 21600 // 6 hours (increased from 3600)
+
+// Allow dynamic params for new posts not in static params
+export const dynamicParams = true
 
 export async function generateStaticParams() {
   PerformanceMonitor.startTimer('generate-static-params')
   try {
-    // Get only slugs to avoid 2MB cache limit
+    // Only generate top 100 most recent posts at build time
+    // Others will be generated on-demand and cached
     const slugs = await PerformanceMonitor.measureFirebaseOperation(
       'static-params-fetch',
       () => BlogService.getPostSlugsOnly()
     )
-    console.log(`✅ [generateStaticParams] Generated static params for ${slugs.length} posts`)
+    const limitedSlugs = slugs.slice(0, 100)
+    console.log(`✅ [generateStaticParams] Generating ${limitedSlugs.length} static params (limited from ${slugs.length} total)`)
     PerformanceMonitor.endTimer('generate-static-params')
-    return slugs.map((item) => ({
+    return limitedSlugs.map((item) => ({
       slug: item.slug,
     }))
   } catch (error) {
