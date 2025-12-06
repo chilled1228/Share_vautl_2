@@ -21,29 +21,129 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 }
 
+/**
+ * Extract all images from post content (markdown and HTML)
+ */
+function extractImagesFromContent(content: string, siteUrl: string): string[] {
+  if (!content) return []
+
+  const images: string[] = []
+
+  // Extract markdown images: ![alt](url)
+  const mdRegex = /!\[.*?\]\(([^)]+)\)/g
+  let match
+  while ((match = mdRegex.exec(content)) !== null) {
+    images.push(match[1])
+  }
+
+  // Extract HTML img tags: <img src="url">
+  const htmlRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+  while ((match = htmlRegex.exec(content)) !== null) {
+    images.push(match[1])
+  }
+
+  // Normalize URLs and filter
+  return images
+    .map(url => {
+      // Make URL absolute
+      if (url.startsWith('//')) return 'https:' + url
+      if (url.startsWith('/')) return siteUrl + url
+      if (!url.startsWith('http')) return siteUrl + '/' + url
+      return url
+    })
+    .filter(url => {
+      // Filter out non-content images (icons, logos, tracking pixels)
+      return !url.match(/(icon|logo|button|avatar|spacer|pixel|tracking|badge)/i) &&
+        url.match(/\.(jpg|jpeg|png|gif|webp|avif)(\?|$)/i)
+    })
+    .filter((url, index, self) => self.indexOf(url) === index) // Remove duplicates
+}
+
+/**
+ * Get image MIME type from URL
+ */
+function getImageType(imageUrl: string): string {
+  if (imageUrl.includes('.webp')) return 'image/webp'
+  if (imageUrl.includes('.png')) return 'image/png'
+  if (imageUrl.includes('.gif')) return 'image/gif'
+  if (imageUrl.includes('.avif')) return 'image/avif'
+  return 'image/jpeg'
+}
+
+/**
+ * Generate a single RSS item for an image
+ */
+function generateRssItem(
+  post: any,
+  imageUrl: string,
+  imageIndex: number,
+  siteUrl: string
+): string {
+  const postUrl = `${siteUrl}/${post.slug}`
+  const imageType = getImageType(imageUrl)
+
+  // Clean description
+  const cleanDescription = (post.excerpt || post.content?.substring(0, 200) || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .trim()
+
+  // Unique GUID for each image to prevent duplicates in Pinterest
+  const guid = `${post.id}-img-${imageIndex}`
+
+  // Estimate file size for enclosure
+  const estimatedLength = imageType === 'image/webp' ? '50000' :
+    imageType === 'image/png' ? '100000' : '75000'
+
+  return `
+    <item>
+      <title><![CDATA[${post.title}]]></title>
+      <description><![CDATA[${cleanDescription}]]></description>
+      <link>${postUrl}</link>
+      <guid isPermaLink="false">${guid}</guid>
+      <pubDate>${new Date(post.createdAt).toUTCString()}</pubDate>
+      <author>noreply@sharevault.in (ShareVault)</author>
+      <category><![CDATA[${post.category || 'Blog'}]]></category>
+      ${post.tags ? post.tags.map((tag: string) => `<category><![CDATA[${tag}]]></category>`).join('\n      ') : ''}
+      <enclosure url="${imageUrl}" type="${imageType}" length="${estimatedLength}"/>
+      <media:content url="${imageUrl}" type="${imageType}" medium="image" width="1200" height="630">
+        <media:title><![CDATA[${post.title}]]></media:title>
+        <media:description><![CDATA[${cleanDescription}]]></media:description>
+      </media:content>
+      <media:thumbnail url="${imageUrl}" width="150" height="150"/>
+    </item>`
+}
+
 export async function GET() {
   try {
     // Dynamically load Firebase for minimal initial bundle
-    const { initializeApp, getApps, getFirestore, collection, query, where, orderBy, limit, getDocs } = await initFirebase()
+    const { initializeApp, getApps, getFirestore, collection, query, where, orderBy, getDocs } = await initFirebase()
 
     // Initialize Firebase Lite (only if not already initialized)
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     const db = getFirestore(app)
 
-    // Get ALL published posts for Pinterest - no limit to ensure every post is available
-    // Pinterest will process posts starting from newest, so order by desc
+    // Get ALL published posts for Pinterest
     const q = query(
       collection(db, 'posts'),
       where('published', '==', true),
       orderBy('createdAt', 'desc')
-      // No limit - Pinterest needs access to ALL posts
     )
     const querySnapshot = await getDocs(q)
     const posts = querySnapshot.docs.map(doc => {
-      const data = doc.data()
+      const data = doc.data() as Record<string, any>
       return {
         id: doc.id,
-        ...data,
+        title: data.title || '',
+        slug: data.slug || '',
+        content: data.content || '',
+        excerpt: data.excerpt || '',
+        category: data.category || 'Blog',
+        tags: data.tags || [],
+        featuredImage: data.featuredImage || '',
+        imageUrl: data.imageUrl || '',
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
       }
@@ -51,62 +151,43 @@ export async function GET() {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sharevault.in'
 
-    const rssItems = posts.map(post => {
-      const postUrl = `${siteUrl}/${post.slug}`
+    // Generate one RSS item PER IMAGE (not per post)
+    // This makes Pinterest create one pin per image
+    const rssItems: string[] = []
 
-      // Try multiple image sources for Pinterest compatibility
-      let imageUrl = post.featuredImage || post.imageUrl // Check both fields
-      if (!imageUrl) {
-        // Fallback to default image
-        imageUrl = getImageUrl('og-image-blog.jpg')
+    for (const post of posts) {
+      // Collect all images: featured image + content images
+      const allImages: string[] = []
+
+      // Add featured image first
+      let featuredImage = post.featuredImage || post.imageUrl
+      if (featuredImage) {
+        if (!featuredImage.startsWith('http')) {
+          featuredImage = featuredImage.startsWith('/')
+            ? `${siteUrl}${featuredImage}`
+            : `${siteUrl}/${featuredImage}`
+        }
+        allImages.push(featuredImage)
       }
 
-      // Ensure image URL is absolute
-      if (!imageUrl.startsWith('http')) {
-        imageUrl = imageUrl.startsWith('/') ? `${siteUrl}${imageUrl}` : `${siteUrl}/${imageUrl}`
+      // Extract and add inline content images
+      const contentImages = extractImagesFromContent(post.content || '', siteUrl)
+      for (const img of contentImages) {
+        if (!allImages.includes(img)) {
+          allImages.push(img)
+        }
       }
 
-      // Get proper image type from URL extension
-      const imageType = imageUrl.includes('.webp') ? 'image/webp' :
-                       imageUrl.includes('.png') ? 'image/png' : 'image/jpeg'
+      // If no images found, use default
+      if (allImages.length === 0) {
+        allImages.push(getImageUrl('og-image-blog.jpg'))
+      }
 
-      // Clean description by removing HTML tags and properly escaping
-      const cleanDescription = (post.excerpt || post.content?.substring(0, 200) || '')
-        .replace(/<[^>]*>/g, '') // Remove HTML tags
-        .replace(/&/g, '&amp;') // Escape ampersands
-        .replace(/</g, '&lt;') // Escape less than
-        .replace(/>/g, '&gt;') // Escape greater than
-        .trim()
-
-      // For media:description, use plain text without any HTML entities
-      const plainDescription = (post.excerpt || post.content?.substring(0, 200) || '')
-        .replace(/<[^>]*>/g, '') // Remove HTML tags
-        .replace(/&[^;]+;/g, '') // Remove all HTML entities
-        .replace(/[<>]/g, '') // Remove any remaining angle brackets
-        .trim()
-
-      // Estimate file size for enclosure (required attribute)
-      const estimatedLength = imageType === 'image/webp' ? '50000' :
-                             imageType === 'image/png' ? '100000' : '75000'
-
-      return `
-    <item>
-      <title><![CDATA[${post.title}]]></title>
-      <description><![CDATA[${cleanDescription}]]></description>
-      <link>${postUrl}</link>
-      <guid isPermaLink="false">${post.id}</guid>
-      <pubDate>${new Date(post.createdAt).toUTCString()}</pubDate>
-      <author>noreply@sharevault.in (ShareVault)</author>
-      <category><![CDATA[${post.category || 'Blog'}]]></category>
-      ${post.tags ? post.tags.map(tag => `<category><![CDATA[${tag}]]></category>`).join('\n      ') : ''}
-      <enclosure url="${imageUrl}" type="${imageType}" length="${estimatedLength}"/>
-      <media:content url="${imageUrl}" type="${imageType}" medium="image" width="1200" height="630">
-        <media:title><![CDATA[${post.title}]]></media:title>
-        <media:description><![CDATA[${plainDescription}]]></media:description>
-      </media:content>
-      <media:thumbnail url="${imageUrl}" width="150" height="150"/>
-    </item>`
-    }).join('')
+      // Create one RSS item for each image
+      allImages.forEach((imageUrl, index) => {
+        rssItems.push(generateRssItem(post, imageUrl, index, siteUrl))
+      })
+    }
 
     const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
@@ -142,7 +223,7 @@ export async function GET() {
     <category>Inspiration</category>
     <category>Mindset</category>
     <category>Self Improvement</category>
-    ${rssItems}
+    ${rssItems.join('')}
   </channel>
 </rss>`
 

@@ -36,19 +36,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* Critical resource hints for performance */}
-        <link rel="dns-prefetch" href="//shair-vault.firebaseapp.com" />
+        <link rel="dns-prefetch" href="//firebasestorage.googleapis.com" />
         <link rel="dns-prefetch" href="//www.gstatic.com" />
-
-        <link rel="preconnect" href="https://shair-vault.firebaseapp.com" crossOrigin="" />
-        <link rel="preconnect" href="https://www.gstatic.com" crossOrigin="" />
-
-        {/* Preload critical Firebase Auth script */}
-        <link
-          rel="modulepreload"
-          href="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"
-          as="script"
-          crossOrigin=""
-        />
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
 
         {/* Structured data */}
         <WebsiteStructuredData />
@@ -71,13 +61,6 @@ export default function RootLayout({
         <meta name="google-site-verification" content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION} />
         <meta name="google-adsense-account" content="ca-pub-7803867089582138" />
 
-        {/* Google AdSense */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7803867089582138"
-          crossOrigin="anonymous"
-        />
-
         {/* Critical CSS inline for above-the-fold content */}
         <style dangerouslySetInnerHTML={{
           __html: `
@@ -96,6 +79,12 @@ export default function RootLayout({
             .text-destructive-foreground { color: #FFFFFF; }
           `
         }} />
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7803867089582138"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <WebVitals />
