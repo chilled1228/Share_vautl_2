@@ -33,11 +33,11 @@ export function getOgImageUrl(imageName: string = 'og-image.jpg'): string {
 
 export function getAlternateUrls(path: string = ''): Record<string, string> {
   const cleanPath = path.replace(/^\/+/, '')
-  
+
   return {
     'en-US': getCanonicalUrl(cleanPath),
-    
-    
+
+
   }
 }
 
@@ -59,10 +59,8 @@ export function shouldIndexPage(path: string): boolean {
     '/api/',
     '/private/',
     '/_next/',
-    '/search',
-    '/tag/',
   ]
-  
+
   return !noIndexPaths.some(noIndexPath => path.startsWith(noIndexPath))
 }
 
@@ -78,7 +76,7 @@ export function getRobotsMeta(path: string): {
   }
 } {
   const shouldIndex = shouldIndexPage(path)
-  
+
   return {
     index: shouldIndex,
     follow: shouldIndex,

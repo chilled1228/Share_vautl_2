@@ -27,6 +27,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    },
+    {
       url: `${baseUrl}/privacy`,
       lastModified: new Date(),
       changeFrequency: "monthly" as const,
@@ -44,12 +50,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as const,
       priority: 0.5,
     },
+    {
+      url: `${baseUrl}/disclaimer`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
   ]
 
   try {
-    // Limit to 1000 most recent posts for sitemap
+    // Limit to 5000 most recent posts for sitemap
     // Google recommends max 50,000 URLs per sitemap
-    const posts = await BlogService.getPosts(1000)
+    const posts = await BlogService.getPosts(5000)
 
     const blogPages = posts.map((post) => ({
       url: `${baseUrl}/${post.slug}`, // Using clean URLs without /blog/ prefix
