@@ -3,6 +3,7 @@ import Footer from "@/components/footer"
 import QuoteCard from "@/components/quote-card"
 import ShareButtons from "@/components/share-buttons"
 import QuoteFlashCards from "@/components/quote-flash-cards"
+import AutoScrollToCards from "@/components/auto-scroll-to-cards"
 import { ArticleStructuredData } from "@/components/structured-data"
 import { ImageObjectSchema } from "@/components/structured-data/image-object-schema"
 import BreadcrumbSchema from "@/components/structured-data/breadcrumb-schema"
@@ -112,6 +113,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       />
 
       <Navigation />
+      <AutoScrollToCards />
 
       {/* Header */}
       <header className="py-12 px-4 sm:px-6 lg:px-8">
@@ -136,13 +138,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           <p className="text-xl md:text-2xl font-bold mb-8 leading-relaxed text-balance">{post.excerpt}</p>
 
-          {/* Quote Flash Cards */}
-          {parsedContent.quotes && parsedContent.quotes.length > 0 && (
-            <div className="mb-12">
-              <QuoteFlashCards quotes={parsedContent.quotes} />
-            </div>
-          )}
-
           {/* Featured Image */}
           {(post.featuredImage || post.imageUrl) && (
             <div className="mb-8 brutalist-border brutalist-shadow transform rotate-1 relative w-full" style={{ aspectRatio: '16/9' }}>
@@ -156,6 +151,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                 quality={90}
               />
+            </div>
+          )}
+
+          {/* Quote Flash Cards - positioned after featured image */}
+          {parsedContent.quotes && parsedContent.quotes.length > 0 && (
+            <div id="quote-cards" className="mb-12 scroll-mt-20">
+              <QuoteFlashCards quotes={parsedContent.quotes} />
             </div>
           )}
 
