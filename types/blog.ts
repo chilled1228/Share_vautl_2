@@ -14,6 +14,7 @@ export interface BlogPost {
   author?: string
   createdAt: Date
   updatedAt: Date
+  publishedAt?: Date
   readTime?: string
 }
 

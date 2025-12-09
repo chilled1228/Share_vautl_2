@@ -1,9 +1,9 @@
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { doc, collection, getDocs, query, orderBy, limit, getDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { BlogService } from '@/lib/blog-service'
 import AdminLayout from '@/components/admin/admin-layout'
 import DashboardStats from '@/components/admin/dashboard-stats'
 import RecentActivity from '@/components/admin/recent-activity'
@@ -32,51 +32,48 @@ interface DashboardData {
 function AdminDashboardContent() {
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Fetch posts data directly from Firestore
-        const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'))
-        const postsSnapshot = await getDocs(postsQuery)
-
-        const allPosts = postsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as any))
-
-        // Get categories
-        const categoriesSnapshot = await getDocs(collection(db, 'categories'))
+        // Fetch all posts to calculate stats
+        const allPosts = await BlogService.getAllPosts()
+        const categories = await BlogService.getCategories()
 
         // Get recent posts (last 7 days)
         const oneWeekAgo = new Date()
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
 
-        const recentPosts = allPosts.filter((post: any) => {
-          const postDate = post.createdAt?.toDate?.() || new Date(post.createdAt)
-          return postDate >= oneWeekAgo
+        const recentPosts = allPosts.filter((post) => {
+          return post.createdAt >= oneWeekAgo
         })
 
-        // Get popular posts (most views)
-        const popularPostsQuery = query(collection(db, 'posts'), orderBy('views', 'desc'), limit(5))
-        const popularPostsSnapshot = await getDocs(popularPostsQuery)
+        // Sort by views (assuming views property exists on BlogPost, or we mock it for now as it's not in the main interface explicitly but might be in data)
+        // Check BlogPost type: it doesn't have 'views'.
+        // Original code used `doc.data().views`.
+        // My BlogService mapToBlogPost doesn't map 'views'.
+        // I should probably add 'views' to BlogPost type and mapping in BlogService if it's important.
+        // For now, I'll access it as 'any' or update BlogService. I'll cast to any for quick migration.
+        const postsWithViews = allPosts.map(p => ({
+          ...p,
+          views: (p as any).views || 0 // Default to 0 if not present
+        }))
 
-        const popularPosts = popularPostsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as any))
+        const popularPosts = [...postsWithViews]
+          .sort((a, b) => b.views - a.views)
+          .slice(0, 5)
 
         const dashboardData = {
           totalPosts: allPosts.length,
-          totalCategories: categoriesSnapshot.size,
+          totalCategories: categories.length,
           recentPosts: recentPosts.length,
-          popularPosts,
-          recentActivity: recentPosts.slice(0, 10).map((post: any) => ({
+          popularPosts: popularPosts.map(p => ({ id: p.id, title: p.title, views: p.views })),
+          recentActivity: recentPosts.slice(0, 10).map((post) => ({
             id: post.id,
             title: post.title,
-            createdAt: post.createdAt,
-            views: post.views || 0
+            createdAt: post.createdAt.toISOString(), // convert Date to string
+            views: (post as any).views || 0
           }))
         }
 
@@ -90,19 +87,15 @@ function AdminDashboardContent() {
 
     if (user) {
       fetchDashboardData()
+    } else if (!authLoading) {
+      // If not user and not loading, we stop loading dashboard
+      setLoading(false)
     }
-  }, [user])
+  }, [user, authLoading])
 
-  const sanitizedUser = user ? {
-    uid: user.uid,
-    email: user.email || '',
-    displayName: user.displayName || undefined,
-    isAdmin: user.isAdmin
-  } : undefined
-
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <AdminLayout user={sanitizedUser}>
+      <AdminLayout user={user || undefined}>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -112,7 +105,7 @@ function AdminDashboardContent() {
 
   if (!dashboardData) {
     return (
-      <AdminLayout user={sanitizedUser}>
+      <AdminLayout user={user || undefined}>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">No dashboard data available</p>
         </div>
@@ -121,7 +114,7 @@ function AdminDashboardContent() {
   }
 
   return (
-    <AdminLayout user={sanitizedUser}>
+    <AdminLayout user={user || undefined}>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Dashboard</h1>

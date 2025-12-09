@@ -25,9 +25,9 @@ export class PerformanceMonitor {
     return duration
   }
 
-  // Log Firebase query performance
-  static logFirebaseQuery(operation: string, count: number, duration: number): void {
-    console.log(`🔥 [Firebase] ${operation}: ${count} docs in ${duration}ms (${(duration/count).toFixed(2)}ms per doc)`)
+  // Log Database query performance
+  static logDbQuery(operation: string, count: number, duration: number): void {
+    console.log(`🗄️ [Database] ${operation}: ${count} docs in ${duration}ms (${(duration / count).toFixed(2)}ms per doc)`)
   }
 
   // Log page rendering performance
@@ -35,8 +35,8 @@ export class PerformanceMonitor {
     console.log(`📄 [Page Render] ${page}: ${duration}ms`)
   }
 
-  // Measure and wrap Firebase operations
-  static async measureFirebaseOperation<T>(
+  // Measure and wrap Database operations
+  static async measureDbOperation<T>(
     label: string,
     operation: () => Promise<T>
   ): Promise<T> {
@@ -47,7 +47,7 @@ export class PerformanceMonitor {
       return result
     } catch (error) {
       this.endTimer(label)
-      console.error(`❌ [Firebase Error] ${label}:`, error)
+      console.error(`❌ [Database Error] ${label}:`, error)
       throw error
     }
   }
@@ -66,7 +66,10 @@ export class PerformanceMonitor {
     // Monitor FID (First Input Delay)
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        console.log(`📊 [FID] First Input Delay: ${entry.processingStart - entry.startTime}ms`)
+        const inputEntry = entry as any
+        if (inputEntry.processingStart) {
+          console.log(`📊 [FID] First Input Delay: ${inputEntry.processingStart - entry.startTime}ms`)
+        }
       }
     }).observe({ entryTypes: ['first-input'] })
 
@@ -74,8 +77,9 @@ export class PerformanceMonitor {
     new PerformanceObserver((list) => {
       let cls = 0
       for (const entry of list.getEntries()) {
-        if (!entry.hadRecentInput) {
-          cls += entry.value
+        const layoutEntry = entry as any
+        if (!layoutEntry.hadRecentInput) {
+          cls += layoutEntry.value
         }
       }
       console.log(`📊 [CLS] Cumulative Layout Shift: ${cls}`)
@@ -93,5 +97,5 @@ export function withPerformanceMonitoring<T>(
   label: string,
   fn: () => Promise<T>
 ): Promise<T> {
-  return PerformanceMonitor.measureFirebaseOperation(label, fn)
+  return PerformanceMonitor.measureDbOperation(label, fn)
 }

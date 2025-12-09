@@ -1,87 +1,120 @@
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { db, storage } from '@/lib/firebase'
+
+import { supabase } from '@/lib/supabase'
 import { BlogPost, MediaFile } from '@/types/blog'
 import { errorHandler } from '@/lib/error-handler'
 import { unstable_cache } from 'next/cache'
-import { PerformanceMonitor } from '@/lib/performance'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 export class BlogService {
-  static async createPost(post: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const docRef = await addDoc(collection(db, 'posts'), {
-      ...post,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    })
-    return docRef.id
+  // Helper to map Supabase data to BlogPost
+  private static mapToBlogPost(data: any): BlogPost {
+    return {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      excerpt: data.excerpt,
+      slug: data.slug,
+      category: data.category,
+      tags: data.tags,
+      featured: data.featured,
+      published: data.published,
+      imageUrl: data.image_url,
+      featuredImage: data.featured_image,
+      authorId: data.author_id,
+      author: data.author_name,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      publishedAt: data.published_at ? new Date(data.published_at) : undefined,
+      readTime: data.read_time
+    }
   }
 
-  // Get posts with optional caching for frequently accessed data - OPTIMIZED
+  static async createPost(post: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>, client: SupabaseClient = supabase): Promise<string> {
+    // Generate a UUID for the post ID since the table uses text IDs
+    const postId = crypto.randomUUID()
+
+    const { data, error } = await client
+      .from('posts')
+      .insert({
+        id: postId,
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt,
+        slug: post.slug,
+        category: post.category,
+        tags: post.tags,
+        featured: post.featured,
+        published: post.published,
+        image_url: post.imageUrl,
+        featured_image: post.featuredImage,
+        author_id: post.authorId,
+        author_name: post.author,
+        read_time: post.readTime,
+      })
+      .select('id')
+      .single()
+
+    if (error) {
+      // Enhanced error handling with detailed Supabase error information
+      const errorMessage = error.message || 'Unknown database error'
+      const errorDetails = error.details ? ` Details: ${error.details}` : ''
+      const errorHint = error.hint ? ` Hint: ${error.hint}` : ''
+      const errorCode = error.code ? ` (Code: ${error.code})` : ''
+
+      throw new Error(`${errorMessage}${errorDetails}${errorHint}${errorCode}`)
+    }
+    return data.id
+  }
+
   static getPosts = unstable_cache(
     async (limitCount?: number): Promise<BlogPost[]> => {
-      let q;
+      let query = supabase
+        .from('posts')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+
       if (limitCount) {
-        q = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          orderBy('createdAt', 'desc'),
-          limit(limitCount)
-        )
-      } else {
-        q = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          orderBy('createdAt', 'desc')
-        )
+        query = query.limit(limitCount)
       }
-      const querySnapshot = await getDocs(q)
-      console.log(`✅ [BlogService.getPosts] Retrieved ${querySnapshot.docs.length} posts from Firebase`, {
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error in getPosts:', error)
+        return []
+      }
+
+      console.log(`✅ [BlogService.getPosts] Retrieved ${data.length} posts from Supabase`, {
         limitCount,
         hasLimit: !!limitCount,
-        totalDocs: querySnapshot.docs.length
+        totalIds: data.length
       })
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-        } as BlogPost
-      })
+
+      return data.map(BlogService.mapToBlogPost)
     },
     ['blog-posts'],
     {
-      revalidate: 7200, // 2 hours (increased from 3600)
+      revalidate: 7200,
       tags: ['posts', 'all-posts']
     }
   )
 
-  static async getAllPosts(limitCount?: number): Promise<BlogPost[]> {
+  static async getAllPosts(limitCount?: number, client: SupabaseClient = supabase): Promise<BlogPost[]> {
     try {
-      let q;
+      let query = client
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false })
+
       if (limitCount) {
-        q = query(
-          collection(db, 'posts'),
-          orderBy('createdAt', 'desc'),
-          limit(limitCount)
-        )
-      } else {
-        q = query(
-          collection(db, 'posts'),
-          orderBy('createdAt', 'desc')
-        )
+        query = query.limit(limitCount)
       }
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-        } as BlogPost
-      })
+
+      const { data, error } = await query
+      if (error) throw error
+
+      return data.map(BlogService.mapToBlogPost)
     } catch (error) {
       errorHandler.error('Error in getAllPosts', error as Error, {
         component: 'BlogService',
@@ -94,270 +127,233 @@ export class BlogService {
 
   static getFeaturedPosts = unstable_cache(
     async (limitCount = 3): Promise<BlogPost[]> => {
-      const q = query(
-        collection(db, 'posts'),
-        where('featured', '==', true),
-        where('published', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      )
-      const querySnapshot = await getDocs(q)
-      console.log(`✅ [BlogService.getFeaturedPosts] Retrieved ${querySnapshot.docs.length} featured posts`)
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-        } as BlogPost
-      })
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('featured', true)
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .limit(limitCount)
+
+      if (error) {
+        console.error('Error in getFeaturedPosts:', error)
+        return []
+      }
+
+      console.log(`✅ [BlogService.getFeaturedPosts] Retrieved ${data.length} featured posts`)
+      return data.map(BlogService.mapToBlogPost)
     },
     ['featured-posts'],
     {
-      revalidate: 7200, // 2 hours (increased from 3600)
+      revalidate: 7200,
       tags: ['posts', 'featured-posts']
     }
   )
 
-  static async getPostById(id: string): Promise<BlogPost | null> {
-    const docRef = doc(db, 'posts', id)
-    const docSnap = await getDoc(docRef)
+  static async getPostById(id: string, client: SupabaseClient = supabase): Promise<BlogPost | null> {
+    const { data, error } = await client
+      .from('posts')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-    if (docSnap.exists()) {
-      const data = docSnap.data()
-      return {
-        id: docSnap.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-      } as BlogPost
-    }
-    return null
+    if (error || !data) return null
+    return BlogService.mapToBlogPost(data)
   }
 
-  // Get post by slug with caching (cached for 2 hours)
   static getPostBySlug = unstable_cache(
     async (slug: string): Promise<BlogPost | null> => {
-      const q = query(
-        collection(db, 'posts'),
-        where('slug', '==', slug),
-        where('published', '==', true),
-        limit(1)
-      )
-      const querySnapshot = await getDocs(q)
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('slug', slug)
+        .eq('published', true)
+        .single()
 
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0]
-        const data = doc.data()
-        console.log(`✅ [BlogService.getPostBySlug] Retrieved post: ${slug}`)
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-        } as BlogPost
+      if (error || !data) {
+        console.log(`⚠️ [BlogService.getPostBySlug] Post not found: ${slug}`)
+        return null
       }
-      console.log(`⚠️ [BlogService.getPostBySlug] Post not found: ${slug}`)
-      return null
+
+      console.log(`✅ [BlogService.getPostBySlug] Retrieved post: ${slug}`)
+      return BlogService.mapToBlogPost(data)
     },
     ['post-by-slug'],
     {
-      revalidate: 21600, // 6 hours (increased from 7200)
+      revalidate: 21600,
       tags: ['posts', 'single-post']
     }
   )
 
-  static async getPostsWithPagination(offset: number, limitCount: number): Promise<BlogPost[]> {
+  static async getPostsWithPagination(offset: number, limitCount: number, client: SupabaseClient = supabase): Promise<BlogPost[]> {
     try {
-      // Optimize: Fetch only up to the needed documents instead of all
-      // Note: In a production app with many posts, cursor-based pagination (startAfter) would be better
-      // but requires maintaining state of the last document.
-      // For now, limit(offset + limitCount) is a significant improvement over fetching everything.
-      const q = query(
-        collection(db, 'posts'),
-        where('published', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(offset + limitCount)
-      )
-      const querySnapshot = await getDocs(q)
+      // Supabase range is inclusive, so offset to offset + limitCount - 1
+      const { data, error } = await client
+        .from('posts')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limitCount - 1)
 
-      // Get the posts we want (skip 'offset' number of documents)
-      const docsToReturn = querySnapshot.docs.slice(offset, offset + limitCount)
+      if (error) throw error
 
-      return docsToReturn.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-        } as BlogPost
-      })
+      return data.map(BlogService.mapToBlogPost)
     } catch (error) {
       console.error('Error in getPostsWithPagination:', error)
       throw error
     }
   }
 
-  static async getTotalPostsCount(): Promise<number> {
+  static async getTotalPostsCount(client: SupabaseClient = supabase): Promise<number> {
     try {
-      const q = query(
-        collection(db, 'posts'),
-        where('published', '==', true)
-      )
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.length
+      const { count, error } = await client
+        .from('posts')
+        .select('*', { count: 'exact', head: true }) // head: true means don't return data, just count
+        .eq('published', true)
+
+      if (error) throw error
+      return count || 0
     } catch (error) {
       console.error('Error getting total posts count:', error)
       return 0
     }
   }
 
-  static async updatePost(id: string, updates: Partial<BlogPost>): Promise<void> {
-    const docRef = doc(db, 'posts', id)
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: new Date()
-    })
+  static async updatePost(id: string, updates: Partial<BlogPost>, client: SupabaseClient = supabase): Promise<void> {
+    // Map updates to snake_case
+    const dbUpdates: any = {
+      updated_at: new Date().toISOString()
+    }
+
+    if (updates.title !== undefined) dbUpdates.title = updates.title
+    if (updates.content !== undefined) dbUpdates.content = updates.content
+    if (updates.excerpt !== undefined) dbUpdates.excerpt = updates.excerpt
+    if (updates.slug !== undefined) dbUpdates.slug = updates.slug
+    if (updates.category !== undefined) dbUpdates.category = updates.category
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags
+    if (updates.featured !== undefined) dbUpdates.featured = updates.featured
+    if (updates.published !== undefined) dbUpdates.published = updates.published
+    if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl
+    if (updates.featuredImage !== undefined) dbUpdates.featured_image = updates.featuredImage
+    if (updates.authorId !== undefined) dbUpdates.author_id = updates.authorId
+    if (updates.author !== undefined) dbUpdates.author_name = updates.author
+    if (updates.readTime !== undefined) dbUpdates.read_time = updates.readTime
+    if (updates.publishedAt !== undefined) dbUpdates.published_at = updates.publishedAt
+    if (updates.createdAt !== undefined) dbUpdates.created_at = updates.createdAt
+
+    const { error } = await client
+      .from('posts')
+      .update(dbUpdates)
+      .eq('id', id)
+
+    if (error) throw error
   }
 
-  static async deletePost(id: string): Promise<void> {
-    const docRef = doc(db, 'posts', id)
-    await deleteDoc(docRef)
+  static async deletePost(id: string, client: SupabaseClient = supabase): Promise<void> {
+    const { error } = await client
+      .from('posts')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
   }
 
-  static async uploadMedia(file: File, userId: string): Promise<MediaFile> {
-    const storageRef = ref(storage, `sharevault/${userId}/${Date.now()}_${file.name}`)
-    const snapshot = await uploadBytes(storageRef, file)
-    const url = await getDownloadURL(snapshot.ref)
+  static async uploadMedia(file: File, userId: string, client: SupabaseClient = supabase): Promise<MediaFile> {
+    const path = `sharevault/${userId}/${Date.now()}_${file.name}`
+
+    const { data, error } = await client.storage
+      .from('sharevault') // Assuming bucket name
+      .upload(path, file)
+
+    if (error) throw error
+
+    const { data: publicUrlData } = client.storage
+      .from('sharevault')
+      .getPublicUrl(path)
 
     return {
-      id: snapshot.metadata.fullPath,
+      id: data.path,
       name: file.name,
-      url: url,
+      url: publicUrlData.publicUrl,
       type: file.type,
       size: file.size,
-      path: snapshot.metadata.fullPath,
+      path: data.path,
       uploadedBy: userId,
       uploadedAt: new Date()
     }
   }
 
-  static async deleteMedia(path: string): Promise<void> {
-    const storageRef = ref(storage, path)
-    await deleteObject(storageRef)
+  static async deleteMedia(path: string, client: SupabaseClient = supabase): Promise<void> {
+    const { error } = await client.storage
+      .from('sharevault')
+      .remove([path])
+
+    if (error) throw error
   }
 
-  static async getPostsByCategory(category: string, limitCount?: number): Promise<BlogPost[]> {
-    // Create a more efficient query that filters at database level
-    let q = query(
-      collection(db, 'posts'),
-      where('published', '==', true),
-      where('category', '==', category),
-      orderBy('createdAt', 'desc')
-    )
+  static async getPostsByCategory(category: string, limitCount?: number, client: SupabaseClient = supabase): Promise<BlogPost[]> {
+    let query = client
+      .from('posts')
+      .select('*')
+      .eq('published', true)
+      .eq('category', category)
+      .order('created_at', { ascending: false })
 
-    // Add limit if specified
     if (limitCount) {
-      q = query(q, limit(limitCount))
+      query = query.limit(limitCount)
     }
 
-    const querySnapshot = await getDocs(q)
-    console.log(`✅ [BlogService.getPostsByCategory] Retrieved ${querySnapshot.docs.length} posts for category "${category}"`, {
-      category,
-      limitCount,
-      totalDocs: querySnapshot.docs.length
-    })
+    const { data, error } = await query
 
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data()
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-      } as BlogPost
-    })
+    if (error) {
+      console.error(`Error in getPostsByCategory: ${error.message}`)
+      return []
+    }
+
+    console.log(`✅ [BlogService.getPostsByCategory] Retrieved ${data.length} posts for category "${category}"`)
+    return data.map(BlogService.mapToBlogPost)
   }
 
-  // Optimized method specifically for related posts (only fetch essential fields)
-  // Get related posts with caching (cached for 20 minutes)
   static getRelatedPostsOptimized = unstable_cache(
     async (category: string, currentSlug: string, limitCount: number = 3): Promise<BlogPost[]> => {
       try {
-        // First try to get posts from the same category
-        const categoryQuery = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          where('category', '==', category),
-          orderBy('createdAt', 'desc'),
-          limit(limitCount + 1) // +1 to account for filtering out current post
-        )
+        // Fetch posts from same category, excluding current
+        const { data: categoryPosts, error: catError } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('published', true)
+          .eq('category', category)
+          .neq('slug', currentSlug)
+          .order('created_at', { ascending: false })
+          .limit(limitCount)
 
-        const categorySnapshot = await getDocs(categoryQuery)
-        const categoryPosts = categorySnapshot.docs
-          .map(doc => {
-            const data = doc.data()
-            return {
-              id: doc.id,
-              slug: data.slug,
-              title: data.title,
-              excerpt: data.excerpt,
-              category: data.category,
-              imageUrl: data.imageUrl,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-            } as BlogPost
-          })
-          .filter(post => post.slug !== currentSlug)
-          .slice(0, limitCount)
+        if (catError) throw catError
 
-        console.log(`✅ [BlogService.getRelatedPostsOptimized] Found ${categoryPosts.length} related posts in category "${category}"`)
+        let relatedPoints = categoryPosts ? categoryPosts.map(BlogService.mapToBlogPost) : []
 
-        // If we have enough posts from category, return them
-        if (categoryPosts.length >= 2) {
-          return categoryPosts.slice(0, 2)
-        }
+        // If not enough, fill with recent posts
+        if (relatedPoints.length < limitCount) {
+          const { data: recentPosts, error: recentError } = await supabase
+            .from('posts')
+            .select('*')
+            .eq('published', true)
+            .neq('slug', currentSlug) // Exclude current
+            .order('created_at', { ascending: false })
+            .limit(limitCount + 2) // Fetch a few more to avoid duplicates
 
-        // Otherwise, get some recent posts to fill the gap
-        const recentQuery = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          orderBy('createdAt', 'desc'),
-          limit(5) // Get 5 to have options after filtering
-        )
+          if (recentError) throw recentError
 
-        const recentSnapshot = await getDocs(recentQuery)
-        const recentPosts = recentSnapshot.docs
-          .map(doc => {
-            const data = doc.data()
-            return {
-              id: doc.id,
-              slug: data.slug,
-              title: data.title,
-              excerpt: data.excerpt,
-              category: data.category,
-              imageUrl: data.imageUrl,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-            } as BlogPost
-          })
-          .filter(post => post.slug !== currentSlug)
+          const recentMapped = recentPosts.map(BlogService.mapToBlogPost)
+          const existingIds = new Set(relatedPoints.map(p => p.id))
 
-        // Combine category posts with recent posts, removing duplicates
-        const allRelatedPosts = [...categoryPosts]
-        const categoryPostSlugs = new Set(categoryPosts.map(p => p.slug))
-
-        for (const recentPost of recentPosts) {
-          if (!categoryPostSlugs.has(recentPost.slug) && allRelatedPosts.length < 2) {
-            allRelatedPosts.push(recentPost)
+          for (const post of recentMapped) {
+            if (!existingIds.has(post.id) && relatedPoints.length < limitCount) {
+              relatedPoints.push(post)
+            }
           }
         }
 
-        console.log(`✅ [BlogService.getRelatedPostsOptimized] Final result: ${allRelatedPosts.length} related posts`)
-        return allRelatedPosts.slice(0, 2)
-
+        return relatedPoints.slice(0, limitCount)
       } catch (error) {
         console.error('Error in getRelatedPostsOptimized:', error)
         return []
@@ -365,96 +361,79 @@ export class BlogService {
     },
     ['related-posts'],
     {
-      revalidate: 21600, // 6 hours (increased from 3600)
+      revalidate: 21600,
       tags: ['posts', 'related-posts']
     }
   )
 
-  // Get all unique categories from published posts
-  static async getCategories(): Promise<string[]> {
-    const q = query(
-      collection(db, 'posts'),
-      where('published', '==', true)
-    )
-    const querySnapshot = await getDocs(q)
-    const categories = new Set<string>()
+  static async getCategories(client: SupabaseClient = supabase): Promise<string[]> {
+    const { data, error } = await client
+      .from('posts')
+      .select('category')
+      .eq('published', true)
 
-    querySnapshot.docs.forEach(doc => {
-      const data = doc.data()
-      if (data.category) {
-        categories.add(data.category)
-      }
+    if (error) {
+      console.error('Error getting categories:', error)
+      return []
+    }
+
+    const categories = new Set<string>()
+    data.forEach(row => {
+      if (row.category) categories.add(row.category)
     })
 
     return Array.from(categories).sort()
   }
 
-  // Get categories with post counts (cached for 15 minutes)
   static getCategoriesWithCounts = unstable_cache(
     async (): Promise<Array<{ name: string, count: number, slug: string }>> => {
-      const q = query(
-        collection(db, 'posts'),
-        where('published', '==', true)
-      )
-      const querySnapshot = await getDocs(q)
-      const categoryMap = new Map<string, number>()
+      const { data, error } = await supabase
+        .from('posts')
+        .select('category')
+        .eq('published', true)
 
-      querySnapshot.docs.forEach(doc => {
-        const data = doc.data()
-        if (data.category) {
-          const current = categoryMap.get(data.category) || 0
-          categoryMap.set(data.category, current + 1)
+      if (error) {
+        console.error('Error getting categories with counts:', error)
+        return []
+      }
+
+      const categoryMap = new Map<string, number>()
+      data.forEach(row => {
+        if (row.category) {
+          categoryMap.set(row.category, (categoryMap.get(row.category) || 0) + 1)
         }
       })
 
-      console.log(`✅ [BlogService.getCategoriesWithCounts] Retrieved ${categoryMap.size} categories`)
       return Array.from(categoryMap.entries())
         .map(([name, count]) => ({
           name,
           count,
           slug: name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         }))
-        .sort((a, b) => b.count - a.count) // Sort by count descending
+        .sort((a, b) => b.count - a.count)
     },
     ['categories-with-counts'],
     {
-      revalidate: 3600, // 1 hour (increased from 900)
+      revalidate: 3600,
       tags: ['categories', 'posts']
     }
   )
 
-  // Get posts by category with pagination - OPTIMIZED
   static getPostsByCategoryWithPagination = unstable_cache(
     async (category: string, offset: number, limitCount: number): Promise<BlogPost[]> => {
       try {
-        // Create optimized query that filters at database level
-        const q = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          where('category', '==', category),
-          orderBy('createdAt', 'desc')
-        )
+        const { data, error } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('published', true)
+          .eq('category', category)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limitCount - 1)
 
-        const querySnapshot = await getDocs(q)
-        console.log(`✅ [BlogService.getPostsByCategoryWithPagination] Retrieved ${querySnapshot.docs.length} posts for category "${category}"`, {
-          category,
-          offset,
-          limitCount,
-          totalDocs: querySnapshot.docs.length
-        })
+        if (error) throw error
 
-        // Apply pagination at the database level
-        const paginatedDocs = querySnapshot.docs.slice(offset, offset + limitCount)
-
-        return paginatedDocs.map(doc => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-          } as BlogPost
-        })
+        console.log(`✅ Retrieved ${data.length} posts for category "${category}" via pagination`)
+        return data.map(BlogService.mapToBlogPost)
       } catch (error) {
         console.error('Error in getPostsByCategoryWithPagination:', error)
         throw error
@@ -462,24 +441,22 @@ export class BlogService {
     },
     ['category-posts-pagination'],
     {
-      revalidate: 7200, // 2 hours (increased from 1800)
+      revalidate: 7200,
       tags: ['posts', 'category-posts']
     }
   )
 
-  // Get total posts count for a category - OPTIMIZED
   static getCategoryPostsCount = unstable_cache(
     async (category: string): Promise<number> => {
       try {
-        const q = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          where('category', '==', category)
-        )
-        const querySnapshot = await getDocs(q)
-        const count = querySnapshot.docs.length
-        console.log(`✅ [BlogService.getCategoryPostsCount] Found ${count} posts for category "${category}"`)
-        return count
+        const { count, error } = await supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('published', true)
+          .eq('category', category)
+
+        if (error) throw error
+        return count || 0
       } catch (error) {
         console.error('Error getting category posts count:', error)
         return 0
@@ -487,141 +464,117 @@ export class BlogService {
     },
     ['category-posts-count'],
     {
-      revalidate: 7200, // 2 hours (increased from 1800)
+      revalidate: 7200,
       tags: ['posts', 'category-counts']
     }
   )
 
-  // Get draft posts (for admin)
-  static async getDraftPosts(limitCount?: number): Promise<BlogPost[]> {
-    let q;
+  static async getDraftPosts(limitCount?: number, client: SupabaseClient = supabase): Promise<BlogPost[]> {
+    let query = client
+      .from('posts')
+      .select('*')
+      .eq('published', false)
+      .order('updated_at', { ascending: false })
+
     if (limitCount) {
-      q = query(
-        collection(db, 'posts'),
-        where('published', '==', false),
-        orderBy('updatedAt', 'desc'),
-        limit(limitCount)
-      )
-    } else {
-      q = query(
-        collection(db, 'posts'),
-        where('published', '==', false),
-        orderBy('updatedAt', 'desc')
-      )
+      query = query.limit(limitCount)
     }
-    const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data()
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-      } as BlogPost
-    })
+
+    const { data, error } = await query
+    if (error) return []
+
+    return data.map(BlogService.mapToBlogPost)
   }
 
-  // Publish a draft post
-  static async publishPost(id: string): Promise<void> {
-    const docRef = doc(db, 'posts', id)
-    await updateDoc(docRef, {
-      published: true,
-      updatedAt: new Date()
-    })
+  static async getOldestDraftPost(client: SupabaseClient = supabase): Promise<BlogPost | null> {
+    const { data, error } = await client
+      .from('posts')
+      .select('*')
+      .eq('published', false)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (error || !data) return null
+    return BlogService.mapToBlogPost(data)
   }
 
-  // Unpublish a post (make it draft)
-  static async unpublishPost(id: string): Promise<void> {
-    const docRef = doc(db, 'posts', id)
-    await updateDoc(docRef, {
-      published: false,
-      updatedAt: new Date()
-    })
+  static async publishPost(id: string, client: SupabaseClient = supabase): Promise<void> {
+    const now = new Date()
+    const { error } = await client
+      .from('posts')
+      .update({
+        published: true,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+        published_at: now.toISOString()
+      })
+      .eq('id', id)
+
+    if (error) throw error
   }
 
-  // Check if slug already exists
-  static async isSlugUnique(slug: string, excludeId?: string): Promise<boolean> {
+  static async unpublishPost(id: string, client: SupabaseClient = supabase): Promise<void> {
+    const { error } = await client
+      .from('posts')
+      .update({
+        published: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+
+    if (error) throw error
+  }
+
+  static async isSlugUnique(slug: string, excludeId?: string, client: SupabaseClient = supabase): Promise<boolean> {
     try {
-      const q = query(
-        collection(db, 'posts'),
-        where('slug', '==', slug),
-        limit(1)
-      )
-      const querySnapshot = await getDocs(q)
+      let query = client
+        .from('posts')
+        .select('id')
+        .eq('slug', slug)
 
-      // If no documents found, slug is unique
-      if (querySnapshot.empty) return true
-
-      // If we're editing a post, exclude it from the check
       if (excludeId) {
-        const existingDoc = querySnapshot.docs[0]
-        return existingDoc.id === excludeId
+        query = query.neq('id', excludeId)
       }
 
-      // Slug already exists
-      return false
+      const { data, error } = await query.limit(1)
+
+      if (error) throw error
+      return data.length === 0
     } catch (error) {
-      errorHandler.error('Error checking slug uniqueness', error as Error, {
-        component: 'BlogService',
-        action: 'isSlugUnique',
-        metadata: { slug, excludeId }
-      })
-      // If there's an error, allow the slug (fail safe)
-      return true
+      console.error('Error checking slug uniqueness:', error)
+      return true // Fail safe
     }
   }
 
-  // Optimized method to get post with related posts in a single operation
+  // Optimized method
   static getPostWithRelatedPosts = unstable_cache(
     async (slug: string): Promise<{ post: BlogPost | null, relatedPosts: BlogPost[] }> => {
       try {
-        // First get the main post
-        const mainPostQuery = query(
-          collection(db, 'posts'),
-          where('slug', '==', slug),
-          where('published', '==', true),
-          limit(1)
-        )
+        const { data: postData, error } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('slug', slug)
+          .eq('published', true)
+          .single()
 
-        const mainPostSnapshot = await getDocs(mainPostQuery)
+        if (error || !postData) return { post: null, relatedPosts: [] }
 
-        if (mainPostSnapshot.empty) {
-          return { post: null, relatedPosts: [] }
-        }
+        const post = BlogService.mapToBlogPost(postData)
 
-        const mainPostDoc = mainPostSnapshot.docs[0]
-        const mainPostData = mainPostDoc.data()
-        const mainPost = {
-          id: mainPostDoc.id,
-          ...mainPostData,
-          createdAt: mainPostData.createdAt?.toDate ? mainPostData.createdAt.toDate() : mainPostData.createdAt,
-          updatedAt: mainPostData.updatedAt?.toDate ? mainPostData.updatedAt.toDate() : mainPostData.updatedAt
-        } as BlogPost
+        // Get related
+        const { data: relatedData, error: relatedError } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('published', true)
+          .eq('category', post.category)
+          .neq('slug', slug)
+          .order('created_at', { ascending: false })
+          .limit(3)
 
-        // Get related posts from the same category (excluding current post)
-        const relatedPostsQuery = query(
-          collection(db, 'posts'),
-          where('published', '==', true),
-          where('category', '==', mainPost.category),
-          where('slug', '!=', slug),
-          orderBy('createdAt', 'desc'),
-          limit(3)
-        )
+        const relatedPosts = relatedData ? relatedData.map(BlogService.mapToBlogPost) : []
+        return { post, relatedPosts }
 
-        const relatedPostsSnapshot = await getDocs(relatedPostsQuery)
-        const relatedPosts = relatedPostsSnapshot.docs.map(doc => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-          } as BlogPost
-        })
-
-        console.log(`✅ [BlogService.getPostWithRelatedPosts] Retrieved post "${slug}" with ${relatedPosts.length} related posts`)
-
-        return { post: mainPost, relatedPosts }
       } catch (error) {
         console.error('Error in getPostWithRelatedPosts:', error)
         return { post: null, relatedPosts: [] }
@@ -629,48 +582,43 @@ export class BlogService {
     },
     ['post-with-related-posts'],
     {
-      revalidate: 1800, // 30 minutes
+      revalidate: 1800,
       tags: ['posts', 'single-post', 'related-posts']
     }
   )
 
-  // Bulk delete posts
-  static async bulkDeletePosts(postIds: string[]): Promise<void> {
-    try {
-      const deletePromises = postIds.map(id => {
-        const docRef = doc(db, 'posts', id)
-        return deleteDoc(docRef)
-      })
+  static async bulkDeletePosts(postIds: string[], client: SupabaseClient = supabase): Promise<void> {
+    const { error } = await client
+      .from('posts')
+      .delete()
+      .in('id', postIds)
 
-      await Promise.all(deletePromises)
-    } catch (error) {
+    if (error) {
       errorHandler.error('Error bulk deleting posts', error as Error, {
         component: 'BlogService',
         action: 'bulkDeletePosts',
-        metadata: { postIds, count: postIds.length }
+        metadata: { postIds }
       })
       throw error
     }
   }
 
-  // Lightweight method to get only slugs for generateStaticParams
-  // This avoids the 2MB cache limit by fetching minimal data
   static getPostSlugsOnly = unstable_cache(
     async (): Promise<Array<{ slug: string }>> => {
-      const q = query(
-        collection(db, 'posts'),
-        where('published', '==', true)
-      )
-      const querySnapshot = await getDocs(q)
-      const slugs = querySnapshot.docs.map(doc => ({
-        slug: doc.data().slug
-      }))
-      console.log(`✅ [BlogService.getPostSlugsOnly] Retrieved ${slugs.length} slugs for static params`)
-      return slugs
+      const { data, error } = await supabase
+        .from('posts')
+        .select('slug')
+        .eq('published', true)
+
+      if (error) {
+        console.error('Error getting slugs:', error)
+        return []
+      }
+      return data // Already in { slug } format
     },
     ['post-slugs-only'],
     {
-      revalidate: 21600, // 6 hours (increased from 3600)
+      revalidate: 21600,
       tags: ['posts', 'slugs']
     }
   )

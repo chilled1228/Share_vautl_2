@@ -1,25 +1,6 @@
-import { getCanonicalUrl, getImageUrl } from '@/lib/seo-utils'
 
-// Dynamic imports for minimal bundle size
-const initFirebase = async () => {
-  const [{ initializeApp, getApps }, { getFirestore }, { collection, query, where, orderBy, limit, getDocs }] = await Promise.all([
-    import('firebase/app'),
-    import('firebase/firestore/lite'),
-    import('firebase/firestore/lite')
-  ])
-
-  return { initializeApp, getApps, getFirestore, collection, query, where, orderBy, limit, getDocs }
-}
-
-// Lightweight Firebase config for RSS route only
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-}
+import { BlogService } from '@/lib/blog-service'
+import { getImageUrl } from '@/lib/seo-utils'
 
 /**
  * Extract all images from post content (markdown and HTML)
@@ -118,36 +99,8 @@ function generateRssItem(
 
 export async function GET() {
   try {
-    // Dynamically load Firebase for minimal initial bundle
-    const { initializeApp, getApps, getFirestore, collection, query, where, orderBy, getDocs } = await initFirebase()
-
-    // Initialize Firebase Lite (only if not already initialized)
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-    const db = getFirestore(app)
-
     // Get ALL published posts for Pinterest
-    const q = query(
-      collection(db, 'posts'),
-      where('published', '==', true),
-      orderBy('createdAt', 'desc')
-    )
-    const querySnapshot = await getDocs(q)
-    const posts = querySnapshot.docs.map(doc => {
-      const data = doc.data() as Record<string, any>
-      return {
-        id: doc.id,
-        title: data.title || '',
-        slug: data.slug || '',
-        content: data.content || '',
-        excerpt: data.excerpt || '',
-        category: data.category || 'Blog',
-        tags: data.tags || [],
-        featuredImage: data.featuredImage || '',
-        imageUrl: data.imageUrl || '',
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-      }
-    })
+    const posts = await BlogService.getAllPosts()
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sharevault.in'
 

@@ -1,6 +1,5 @@
+
 import { NextRequest, NextResponse } from 'next/server'
-import { collection, getDocs, query } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { BlogService } from '@/lib/blog-service'
 
 // Posts to delete (based on your list)
@@ -37,19 +36,17 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Searching for posts to delete...');
 
-    // Get all posts
-    const allPostsQuery = query(collection(db, 'posts'));
-    const allPostsSnapshot = await getDocs(allPostsQuery);
+    // Get all posts using Supabase service
+    const allPosts = await BlogService.getAllPosts();
 
-    console.log(`📊 Total posts in database: ${allPostsSnapshot.docs.length}`);
+    console.log(`📊 Total posts in database: ${allPosts.length}`);
 
     const postsToDeleteIds: string[] = [];
     const foundPosts: { id: string; title: string }[] = [];
 
     // Find posts that match our deletion list
-    for (const doc of allPostsSnapshot.docs) {
-      const data = doc.data();
-      const title = data.title || '';
+    for (const post of allPosts) {
+      const title = post.title || '';
 
       // Check if this post's title contains any of our target phrases
       const shouldDelete = postsToDelete.some(deleteTitle => {
@@ -59,9 +56,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (shouldDelete) {
-        foundPosts.push({ id: doc.id, title });
-        postsToDeleteIds.push(doc.id);
-        console.log(`🗑️  Found post to delete: "${title}" (ID: ${doc.id})`);
+        foundPosts.push({ id: post.id, title });
+        postsToDeleteIds.push(post.id);
+        console.log(`🗑️  Found post to delete: "${title}" (ID: ${post.id})`);
       }
     }
 

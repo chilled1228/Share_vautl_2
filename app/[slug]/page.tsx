@@ -54,7 +54,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params
 
   // Fetch post from Firebase by slug
-  const post = await PerformanceMonitor.measureFirebaseOperation(
+  const post = await PerformanceMonitor.measureDbOperation(
     `post-fetch-${slug}`,
     () => BlogService.getPostBySlug(slug)
   )
@@ -68,7 +68,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const parsedContent = parseContentServer(post.content)
 
   // Fetch related posts separately
-  const relatedPosts = await PerformanceMonitor.measureFirebaseOperation(
+  const relatedPosts = await PerformanceMonitor.measureDbOperation(
     `related-posts-fetch-${slug}`,
     () => BlogService.getRelatedPostsOptimized(post.category, slug, 3)
   )
@@ -253,7 +253,7 @@ export async function generateStaticParams() {
   try {
     // Only generate top 100 most recent posts at build time
     // Others will be generated on-demand and cached
-    const slugs = await PerformanceMonitor.measureFirebaseOperation(
+    const slugs = await PerformanceMonitor.measureDbOperation(
       'static-params-fetch',
       () => BlogService.getPostSlugsOnly()
     )
@@ -275,7 +275,7 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
   const { slug } = await params
 
   try {
-    const post = await PerformanceMonitor.measureFirebaseOperation(
+    const post = await PerformanceMonitor.measureDbOperation(
       `metadata-fetch-${slug}`,
       () => BlogService.getPostBySlug(slug)
     )

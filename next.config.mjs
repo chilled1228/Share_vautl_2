@@ -23,12 +23,6 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
@@ -144,9 +138,9 @@ const nextConfig = {
         headers: [
           {
             key: 'Link',
-            value: '<https://firebasestorage.googleapis.com>; rel=preconnect, <https://pub-141831e61e69445289222976a15b6fb3.r2.dev>; rel=preconnect'
+            value: '<https://pub-141831e61e69445289222976a15b6fb3.r2.dev>; rel=preconnect'
           }
-        ],
+        ]
       },
     ]
   },
@@ -193,10 +187,6 @@ const nextConfig = {
 
     // Enable web vitals attribution for better debugging
     webVitalsAttribution: ['CLS', 'FCP', 'FID', 'INP', 'LCP', 'TTFB'],
-
-
-    // Server components optimization
-    serverComponentsExternalPackages: ['firebase-admin'],
   },
 
   // Webpack optimizations for maximum performance

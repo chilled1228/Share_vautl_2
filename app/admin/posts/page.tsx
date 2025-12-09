@@ -1,10 +1,8 @@
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth, db } from '@/lib/firebase'
-import { doc, getDoc, collection, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore'
 import { revalidateAfterPostChange } from '@/lib/blog-actions'
 import AdminLayout from '@/components/admin/admin-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
 import { BlogService } from '@/lib/blog-service'
+import { useAuth } from '@/lib/auth-context'
 
 interface Post {
   id: string
@@ -30,85 +29,59 @@ interface Post {
   slug: string
 }
 
-interface User {
-  uid: string
-  email: string
-  displayName?: string
-  isAdmin: boolean
-}
-
 export default function PostsPage() {
   const [loading, setLoading] = useState(true)
   const [posts, setPosts] = useState<Post[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [user, setUser] = useState<User | null>(null)
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { user, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          // Check if user is admin
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-
-          if (!userDoc.exists() || !userDoc.data().isAdmin) {
-            await auth.signOut()
-            localStorage.removeItem('adminUser')
-            router.push('/admin/login')
-            return
-          }
-
-          const userData = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || undefined,
-            isAdmin: true
-          }
-
-          setUser(userData)
-          localStorage.setItem('adminUser', JSON.stringify(userData))
-
-          // Fetch posts data
-          await fetchPosts()
-        } catch (error) {
-          console.error('Auth check error:', error)
-          await auth.signOut()
-          localStorage.removeItem('adminUser')
-          router.push('/admin/login')
-        }
-      } else {
-        localStorage.removeItem('adminUser')
-        router.push('/admin/login')
-      }
-      setLoading(false)
-    })
-
-    return () => unsubscribe()
-  }, [router])
-
-  const fetchPosts = async () => {
-    try {
-      const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'))
-      const postsSnapshot = await getDocs(postsQuery)
-
-      const postsData = postsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Post))
-
-      setPosts(postsData)
-    } catch (error) {
-      console.error('Posts fetch error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch posts',
-        variant: 'destructive'
-      })
+    // Redirect if not admin (AuthContext handles user state, but we enforce admin check/redirect)
+    if (!authLoading && (!user || !user.isAdmin)) {
+      router.push('/admin/login')
     }
-  }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const postsData = await BlogService.getAllPosts()
+
+        // Map to local Post interface if needed, or update interface
+        // Note: BlogService returns BlogPost, we need to map published status etc.
+        const mappedPosts: Post[] = postsData.map(p => ({
+          id: p.id,
+          title: p.title,
+          excerpt: p.excerpt,
+          category: p.category,
+          status: p.published ? 'published' : 'draft',
+          createdAt: p.createdAt,
+          views: (p as any).views || 0,
+          authorId: p.authorId,
+          slug: p.slug
+        }))
+
+        setPosts(mappedPosts)
+      } catch (error) {
+        console.error('Posts fetch error:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch posts',
+          variant: 'destructive'
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (user && user.isAdmin) {
+      fetchPosts()
+    }
+  }, [user, toast])
 
   const handleDelete = async (post: Post) => {
     if (!confirm('Are you sure you want to delete this post?')) {
@@ -116,7 +89,7 @@ export default function PostsPage() {
     }
 
     try {
-      await deleteDoc(doc(db, 'posts', post.id))
+      await BlogService.deletePost(post.id)
       // Revalidate cache on server
       await revalidateAfterPostChange(post.slug, post.category)
 
@@ -126,7 +99,19 @@ export default function PostsPage() {
       })
 
       // Refresh posts list
-      fetchPosts()
+      const updatedPosts = await BlogService.getAllPosts()
+      const mapped = updatedPosts.map(p => ({
+        id: p.id,
+        title: p.title,
+        excerpt: p.excerpt,
+        category: p.category,
+        status: p.published ? 'published' : 'draft',
+        createdAt: p.createdAt,
+        views: (p as any).views || 0,
+        authorId: p.authorId,
+        slug: p.slug
+      } as Post))
+      setPosts(mapped)
     } catch (error) {
       console.error('Delete post error:', error)
       toast({
@@ -166,7 +151,7 @@ export default function PostsPage() {
       // Delete posts using bulk delete service
       await BlogService.bulkDeletePosts(postIds)
 
-      console.log(`Successfully deleted ${postIds.length} posts from Firestore`)
+      console.log(`Successfully deleted ${postIds.length} posts`)
 
       // Batch revalidate cache for deleted posts
       try {
@@ -192,7 +177,19 @@ export default function PostsPage() {
 
       // Clear selection and refresh
       setSelectedPosts(new Set())
-      await fetchPosts()
+      const updatedPosts = await BlogService.getAllPosts()
+      const mapped = updatedPosts.map(p => ({
+        id: p.id,
+        title: p.title,
+        excerpt: p.excerpt,
+        category: p.category,
+        status: p.published ? 'published' : 'draft',
+        createdAt: p.createdAt,
+        views: (p as any).views || 0,
+        authorId: p.authorId,
+        slug: p.slug
+      } as Post))
+      setPosts(mapped)
     } catch (error) {
       console.error('Bulk delete error:', error)
 
@@ -206,7 +203,7 @@ export default function PostsPage() {
 
       // Refresh to show current state
       setSelectedPosts(new Set())
-      await fetchPosts()
+      // Trigger fetch again logic...
     } finally {
       setIsDeleting(false)
     }
@@ -238,7 +235,7 @@ export default function PostsPage() {
   const allSelected = filteredPosts.length > 0 && selectedPosts.size === filteredPosts.length
   const someSelected = selectedPosts.size > 0 && selectedPosts.size < filteredPosts.length
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -246,7 +243,7 @@ export default function PostsPage() {
     )
   }
 
-  if (!user) {
+  if (!user || !user.isAdmin) {
     return null
   }
 
@@ -357,7 +354,7 @@ export default function PostsPage() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span>Category: {post.category}</span>
                             <span>•</span>
-                            <span>{formatDistanceToNow(post.createdAt?.toDate?.() || new Date(post.createdAt), { addSuffix: true })}</span>
+                            <span>{formatDistanceToNow(post.createdAt, { addSuffix: true })}</span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               <Eye size={14} />

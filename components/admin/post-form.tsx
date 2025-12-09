@@ -1,10 +1,8 @@
+
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth, db } from '@/lib/firebase'
-import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { revalidateAfterPostChange } from '@/lib/blog-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Save, X } from 'lucide-react'
 import URLImageExtractor from '@/components/URLImageExtractor'
+import { BlogService } from '@/lib/blog-service'
+import { useAuth } from '@/lib/auth-context'
 
 interface PostFormData {
   title: string
@@ -36,7 +36,7 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [user, setUser] = useState<any>(null)
+  const { user } = useAuth()
 
   // Helper to process initial tags
   const getInitialTags = (tags?: string | string[]) => {
@@ -55,35 +55,6 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
     tags: getInitialTags(initialData?.tags)
   })
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-
-          if (!userDoc.exists() || !userDoc.data().isAdmin) {
-            await auth.signOut()
-            localStorage.removeItem('adminUser')
-            router.push('/admin/login')
-            return
-          }
-
-          setUser(firebaseUser)
-        } catch (error) {
-          console.error('Auth check error:', error)
-          await auth.signOut()
-          localStorage.removeItem('adminUser')
-          router.push('/admin/login')
-        }
-      } else {
-        localStorage.removeItem('adminUser')
-        router.push('/admin/login')
-      }
-    })
-
-    return () => unsubscribe()
-  }, [router])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -94,30 +65,51 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
         throw new Error('User not authenticated')
       }
 
-      const postData = {
-        ...formData,
-        authorId: user.uid,
-        authorEmail: user.email,
-        authorName: user.displayName || user.email,
-        slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-        published: formData.status === 'published',
-        views: 0,
-        featured: false, // Default to false
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }
+      const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+      const isPublished = formData.status === 'published'
 
       if (isEditing && postId) {
         // Update existing post
-        await setDoc(doc(db, 'posts', postId), postData, { merge: true })
+        await BlogService.updatePost(postId, {
+          title: formData.title,
+          content: formData.content,
+          excerpt: formData.excerpt,
+          category: formData.category,
+          published: isPublished,
+          imageUrl: formData.imageUrl,
+          tags: tagsArray,
+          slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), // update slug if title changed? Maybe optional.
+          // Be careful updating slug as it breaks links. 
+          // Original code updated slug on every save.
+          updatedAt: new Date()
+        })
+
+        // Use updated slug for revalidation if needed
+        const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        await revalidateAfterPostChange(slug, formData.category)
+
       } else {
         // Create new post
-        await addDoc(collection(db, 'posts'), postData)
-      }
+        await BlogService.createPost({
+          title: formData.title,
+          content: formData.content,
+          excerpt: formData.excerpt,
+          category: formData.category,
+          published: isPublished,
+          imageUrl: formData.imageUrl,
+          tags: tagsArray,
+          slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+          authorId: user.uid, // user.uid from AuthContext
+          author: user.displayName || user.email || 'Admin', // Author name
+          featured: false,
+          featuredImage: formData.imageUrl, // Map imageUrl to featuredImage too? Original code used imageUrl
+          publishedAt: isPublished ? new Date() : undefined,
+          readTime: Math.ceil(formData.content.split(/\s+/).length / 200).toString() // Estimate read time
+        })
 
-      // Revalidate cache on server
-      await revalidateAfterPostChange(postData.slug, postData.category)
+        const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        await revalidateAfterPostChange(slug, formData.category)
+      }
 
       router.push('/admin/posts')
     } catch (err) {
@@ -237,8 +229,6 @@ export default function PostForm({ initialData, postId, isEditing = false }: Pos
               placeholder="Write your post content here..."
             />
           </div>
-
-
 
           <div className="space-y-2">
             <Label htmlFor="tags">Tags</Label>

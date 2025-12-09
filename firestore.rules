@@ -2,6 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
 
     // Users Collection
     match /users/{userId} {
@@ -16,20 +21,22 @@ service cloud.firestore {
       // Allow anyone to read published posts
       allow read: if resource.data.published == true;
       // Allow authenticated admins to read any post (including drafts)
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if isAdmin();
       // Allow authenticated admins to create, update, and delete posts
-      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow create, update, delete: if isAdmin();
     }
 
-    // Allow authenticated admins to list all users and posts
+    // Allow authenticated admins to list all users
     match /users/{document=**} {
-      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow list: if isAdmin();
     }
+
+    // List rules for posts
     match /posts/{document=**} {
       // Allow anyone to list published posts
       allow list: if resource.data.published == true;
       // Allow authenticated admins to list all posts (including drafts)
-      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow list: if isAdmin();
     }
   }
 }

@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from 'react'
@@ -8,9 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft, Download, RefreshCw, AlertTriangle } from 'lucide-react'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { revalidateAfterPostChange } from '@/lib/blog-actions'
+import { BlogService } from '@/lib/blog-service'
+import { supabase } from '@/lib/supabase'
 import {
     validateFileSize,
     validateCSVStructure,
@@ -145,26 +146,35 @@ export default function BulkPostUpload({ user }: { user: any }) {
                     throw new Error('Title and Content are required')
                 }
 
+                // Look up the user's database ID from the users table
+                // The user.uid is the auth_id, but we need the users.id for the foreign key
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('auth_id', user.uid)
+                    .maybeSingle()
+
+                if (userError || !userData) {
+                    throw new Error(`User not found in database. Please ensure your account is properly set up.`)
+                }
+
                 const postData = {
                     title: post.title.trim(),
                     content: post.content.trim(),
                     excerpt: post.excerpt?.trim() || '',
                     category: post.category?.trim() || 'Uncategorized',
-                    status: ['draft', 'published'].includes(post.status?.toLowerCase()) ? post.status.toLowerCase() : 'draft',
+                    published: post.status?.toLowerCase() === 'published',
                     imageUrl: post.imageUrl?.trim() || '',
                     tags: post.tags ? post.tags.split(',').map(t => t.trim()).filter(t => t !== '') : [],
-                    authorId: user.uid,
-                    authorEmail: user.email,
-                    authorName: user.displayName || user.email,
+                    authorId: userData.id, // Use the users.id, not auth_id
+                    author: user.displayName || user.email || 'Admin',
                     slug: post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-                    published: post.status?.toLowerCase() === 'published',
-                    views: 0,
                     featured: false,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
+                    readTime: Math.ceil(post.content.trim().split(/\s+/).length / 200).toString(),
+                    publishedAt: post.status?.toLowerCase() === 'published' ? new Date() : undefined
                 }
 
-                await addDoc(collection(db, 'posts'), postData)
+                await BlogService.createPost(postData)
 
                 // Track successful posts for batch revalidation
                 successfulPosts.push({

@@ -18,6 +18,8 @@ import {
 
 interface AdminLayoutProps {
   children: React.ReactNode
+  // user prop is optional/legacy now as we use useAuth, but keeping it optional for compatibility if needed, 
+  // though we prefer the context user.
   user?: {
     uid: string
     email: string
@@ -26,9 +28,16 @@ interface AdminLayoutProps {
   }
 }
 
-export default function AdminLayout({ children, user }: AdminLayoutProps) {
+// Ensure useAuth is imported at top
+import { useAuth } from '@/lib/auth-context'
+
+export default function AdminLayout({ children, user: initialUser }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
+  const { user: contextUser, logout } = useAuth()
+
+  // Prefer context user if available
+  const user = contextUser || initialUser
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -41,17 +50,10 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      // Import Firebase auth dynamically to avoid SSR issues
-      const { signOut } = await import('firebase/auth')
-      const { auth } = await import('@/lib/firebase')
-
-      await signOut(auth)
-      localStorage.removeItem('adminUser')
+      await logout()
       router.push('/admin/login')
     } catch (error) {
       console.error('Logout error:', error)
-      // Fallback: clear localStorage and redirect
-      localStorage.removeItem('adminUser')
       router.push('/admin/login')
     }
   }

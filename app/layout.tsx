@@ -36,9 +36,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* Critical resource hints for performance */}
-        <link rel="dns-prefetch" href="//firebasestorage.googleapis.com" />
-        <link rel="dns-prefetch" href="//www.gstatic.com" />
-        <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" />
+        {/* <link rel="dns-prefetch" href="//firebasestorage.googleapis.com" /> */}
+        {/* <link rel="dns-prefetch" href="//www.gstatic.com" /> */}
+        {/* <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="" /> */}
 
         {/* Structured data */}
         <WebsiteStructuredData />
