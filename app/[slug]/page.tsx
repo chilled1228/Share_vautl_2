@@ -2,6 +2,7 @@ import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import QuoteCard from "@/components/quote-card"
 import ShareButtons from "@/components/share-buttons"
+import QuoteFlashCards from "@/components/quote-flash-cards"
 import { ArticleStructuredData } from "@/components/structured-data"
 import { ImageObjectSchema } from "@/components/structured-data/image-object-schema"
 import BreadcrumbSchema from "@/components/structured-data/breadcrumb-schema"
@@ -134,6 +135,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </h1>
 
           <p className="text-xl md:text-2xl font-bold mb-8 leading-relaxed text-balance">{post.excerpt}</p>
+
+          {/* Quote Flash Cards */}
+          {parsedContent.quotes && parsedContent.quotes.length > 0 && (
+            <div className="mb-12">
+              <QuoteFlashCards quotes={parsedContent.quotes} />
+            </div>
+          )}
 
           {/* Featured Image */}
           {(post.featuredImage || post.imageUrl) && (
