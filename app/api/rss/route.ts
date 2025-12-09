@@ -41,6 +41,18 @@ function extractImagesFromContent(content: string, siteUrl: string): string[] {
 }
 
 /**
+ * Escape special characters in XML attributes
+ */
+function escapeXmlAttribute(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/**
  * Get image MIME type from URL
  */
 function getImageType(imageUrl: string): string {
@@ -78,22 +90,26 @@ function generateRssItem(
   const estimatedLength = imageType === 'image/webp' ? '50000' :
     imageType === 'image/png' ? '100000' : '75000'
 
+  // Escape URLs for XML attributes
+  const escapedImageUrl = escapeXmlAttribute(imageUrl)
+  const escapedPostUrl = escapeXmlAttribute(postUrl)
+
   return `
     <item>
       <title><![CDATA[${post.title}]]></title>
       <description><![CDATA[${cleanDescription}]]></description>
-      <link>${postUrl}</link>
+      <link>${escapedPostUrl}</link>
       <guid isPermaLink="false">${guid}</guid>
       <pubDate>${new Date(post.createdAt).toUTCString()}</pubDate>
       <author>noreply@sharevault.in (ShareVault)</author>
       <category><![CDATA[${post.category || 'Blog'}]]></category>
       ${post.tags ? post.tags.map((tag: string) => `<category><![CDATA[${tag}]]></category>`).join('\n      ') : ''}
-      <enclosure url="${imageUrl}" type="${imageType}" length="${estimatedLength}"/>
-      <media:content url="${imageUrl}" type="${imageType}" medium="image" width="1200" height="630">
+      <enclosure url="${escapedImageUrl}" type="${imageType}" length="${estimatedLength}"/>
+      <media:content url="${escapedImageUrl}" type="${imageType}" medium="image" width="1200" height="630">
         <media:title><![CDATA[${post.title}]]></media:title>
         <media:description><![CDATA[${cleanDescription}]]></media:description>
       </media:content>
-      <media:thumbnail url="${imageUrl}" width="150" height="150"/>
+      <media:thumbnail url="${escapedImageUrl}" width="150" height="150"/>
     </item>`
 }
 
